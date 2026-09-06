@@ -13,6 +13,8 @@ import {
 	tableRequestMessageBus,
 } from "@/lib/table/message-bus";
 
+const refusalNoticeMs = 4_000;
+
 export class TableDriver implements BillDriver {
 	public async subscribe({
 		billId,
@@ -21,6 +23,7 @@ export class TableDriver implements BillDriver {
 		ndk,
 	}: Parameters<BillDriver["subscribe"]>[0]) {
 		let isInsideThePayment = false;
+		let refusalTimeout: ReturnType<typeof setTimeout> | undefined;
 		const expectedSubscriptionId = Uuid7.random();
 		const [prefix, pubkey = null, qrCodeIdFirstPart = null, ...rest] =
 			billId.split("-");
@@ -65,6 +68,12 @@ export class TableDriver implements BillDriver {
 						alertMessage: "Failed to create payment...",
 					},
 				});
+				return;
+			}
+
+			if (responseResult.value.variant !== "payment") {
+				screenStack.push(responseResult.value);
+				refusalTimeout = setTimeout(screenStack.back, refusalNoticeMs);
 				return;
 			}
 
@@ -196,6 +205,7 @@ export class TableDriver implements BillDriver {
 			close: async () => {
 				serverResult.value.close();
 				clearInterval(interval);
+				clearTimeout(refusalTimeout);
 				void tableRequestClient
 					.call(
 						"unsubscribe",
