@@ -35,8 +35,6 @@ const fetchLatestVersion = async (signal: AbortSignal) => {
 
 	const payload = await response.text();
 	const result = schema.safeDecode(payload);
-	console.log("payload", payload);
-	console.log("result", result);
 	return result.success ? result.data : null;
 };
 
