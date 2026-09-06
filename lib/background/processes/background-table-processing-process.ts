@@ -9,17 +9,28 @@ import { sql } from "kysely";
 import type { BackgroundProcess } from "@/lib/background/service";
 import type { ScreenData } from "@/lib/bill/driver";
 import { createQuery } from "@/lib/evolu";
+import { createDeviceQuery } from "@/lib/evolu/device";
+import type { Id } from "@/lib/evolu/types";
 import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import { currencyConverter } from "@/lib/integrations/currency-converter/currency-converter";
+import { createPaymentWithDefaultMethods } from "@/lib/payment/service";
 import {
+	Currency,
 	NonEmptyString,
 	NonNegativeInteger,
 	type PositiveNumber,
+	TimestampMs,
 	Uuid7,
 } from "@/lib/shared/types";
 import {
 	tableEventMessageBus,
 	tableRequestMessageBus,
 } from "@/lib/table/message-bus";
+import {
+	type PendingTablePayment,
+	pendingTablePayments,
+} from "@/lib/table/pending-table-payments";
+import { paymentFromSubscribedBill } from "@/lib/table/subscribed-bill-payment";
 
 const notificationId = createIdFromString("backgroundTableProcessing");
 const subscriptionTimeoutMs = 30_000;
@@ -50,6 +61,17 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 				timeout: ReturnType<typeof setTimeout>;
 			}
 		>();
+		const startedAt = TimestampMs(Date.now());
+		const pending = pendingTablePayments();
+		const devices = await props.deviceEvolu.loadQuery(
+			createDeviceQuery((db) =>
+				db
+					.selectFrom("device")
+					.select(["device.id as id"] as const)
+					.where("device.isDeleted", "is not", sqliteTrue),
+			),
+		);
+		const deviceId = devices[0]?.id ?? null;
 
 		const posBillsQuery = createQuery((db) =>
 			db
@@ -167,27 +189,32 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 
 		let posBills: (typeof posBillsQuery.Row)[] = [];
 
-		const getBillByQrCode = (
-			qrCodeId: NonEmptyString,
-		): Extract<ScreenData, { variant: "table" }>["payload"] => {
-			const bill = posBills.find(
+		const findBillByQrCode = (qrCodeId: NonEmptyString) =>
+			posBills.find(
 				(item) =>
 					item.table &&
 					item.table.codes.find((code) => code.code === qrCodeId) !== undefined,
 			);
+
+		const billScreenOf = (
+			bill: typeof posBillsQuery.Row | undefined,
+			paid: ReadonlyMap<Id, number> = new Map(),
+		): Extract<ScreenData, { variant: "table" }>["payload"] => {
 			if (bill === undefined) {
 				return {
 					bill: null,
 				};
 			}
 
-			const itemLines = bill.items.map((item) => ({
-				quantity: item.quantity,
-				optionality: {
-					checked: NonNegativeInteger(0),
-				},
-				item: item.item,
-			}));
+			const itemLines = bill.items
+				.map((item) => ({
+					quantity: item.quantity - (paid.get(item.item.id) ?? 0),
+					optionality: {
+						checked: NonNegativeInteger(0),
+					},
+					item: item.item,
+				}))
+				.filter((line) => line.quantity > 0);
 
 			return {
 				bill: {
@@ -198,6 +225,53 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 					name: bill.table?.label ?? NonEmptyString("Unknown"),
 				},
 			};
+		};
+
+		const getBillByQrCode = (qrCodeId: NonEmptyString) =>
+			billScreenOf(findBillByQrCode(qrCodeId));
+
+		const closeOutPaidLines = (paid: PendingTablePayment) => {
+			const bill = posBills.find((item) => item.id === paid.billId);
+			const billScreenData = billScreenOf(
+				bill,
+				new Map(paid.lines.map((line) => [line.itemId, line.quantity])),
+			);
+			if (bill !== undefined) {
+				for (const line of paid.lines) {
+					props.evolu.insert("posBillItemLine", {
+						posBillId: bill.id,
+						deviceId,
+						catalogItemId: line.catalogItemId,
+						itemId: line.itemId,
+						_tag: "remove",
+						totalAmount: line.totalAmount,
+						quantity: line.quantity,
+					});
+				}
+			}
+
+			tableEventMessageBus
+				.createInstance({
+					ndk: props.ndk,
+				})
+				.getClient({
+					recipientPubkey: paid.pubkey,
+				})
+				.call(
+					"paymentFinished",
+					{
+						billScreenData,
+						subscriptionId: paid.subscriptionId,
+					},
+					{
+						ignoreResponse: true,
+					},
+				)
+				.then((result) => {
+					if (!result.ok) {
+						console.error(result.error);
+					}
+				});
 		};
 
 		const sendBillChange = (input: {
@@ -244,15 +318,56 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 				ndk: props.ndk,
 			})
 			.listen({
-				createPaymentFromSubscribedBill: async (_input) => {
-					// @TODO
-					return {
-						variant: "info",
-						payload: {
-							status: "failure",
-							text: NonEmptyString("Unexpected subscription"),
-						},
-					};
+				createPaymentFromSubscribedBill: async (input) => {
+					const subscription = subscriptionRef.get(input.subscriptionId);
+					if (subscription === undefined) {
+						return {
+							variant: "info",
+							payload: {
+								status: "failure",
+								text: NonEmptyString("Unexpected subscription"),
+							},
+						};
+					}
+
+					const bill = findBillByQrCode(subscription.qrCodeId);
+					const created = await paymentFromSubscribedBill({
+						evolu: props.evolu,
+						deviceId,
+						createPayment: createPaymentWithDefaultMethods({
+							evolu: props.evolu,
+							ndk: props.ndk,
+						}),
+						convertToBtc: (amount, currency) =>
+							currencyConverter.convert({
+								amount,
+								sourceCurrency: currency,
+								targetCurrency: Currency.BTC,
+							}),
+					})({
+						bill,
+						request: input.payment,
+						pendingQuantities:
+							bill === undefined
+								? new Map()
+								: pending.quantitiesFor(bill.id, Date.now()),
+					});
+
+					if (created.variant === "info") {
+						return created;
+					}
+					if (bill !== undefined) {
+						pending.add(input.payment.paymentId, {
+							subscriptionId: input.subscriptionId,
+							pubkey: subscription.pubkey,
+							qrCodeId: subscription.qrCodeId,
+							billId: bill.id,
+							lines: created.lines,
+							expiresAt: created.expiresAt,
+						});
+					}
+
+					return { variant: "payment", payload: created.payload };
 				},
 				subscribeToBillByQrCode: async (input) => {
 					const subscriptionId = input.subscriptionId ?? Uuid7.random();
@@ -310,8 +425,30 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 			},
 		);
 
+		const settledSinceStartQuery = createQuery((db) =>
+			db
+				.selectFrom("paymentWatchingState")
+				.select(["paymentWatchingState.id as id"] as const)
+				.where("paymentWatchingState.isDeleted", "is not", sqliteTrue)
+				.where("paymentWatchingState.verifiedAt", ">=", startedAt),
+		);
+
+		const unsubscribeSettled = subscribeToEvoluQuery(
+			props.evolu,
+			settledSinceStartQuery,
+			(rows) => {
+				for (const row of rows) {
+					const paid = pending.settle(row.id);
+					if (paid !== undefined) {
+						closeOutPaidLines(paid);
+					}
+				}
+			},
+		);
+
 		return () => {
 			unsubscribePosBills();
+			unsubscribeSettled();
 			for (const subscription of subscriptionRef.values()) {
 				clearTimeout(subscription.timeout);
 			}
