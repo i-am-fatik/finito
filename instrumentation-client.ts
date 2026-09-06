@@ -1,3 +1,1 @@
-import { ensureDisposableStackPolyfill } from "@/lib/polyfills/disposable-stack";
-
-void ensureDisposableStackPolyfill();
+import "core-js/proposals/explicit-resource-management";

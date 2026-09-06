@@ -1,3 +1,4 @@
+import "core-js/proposals/explicit-resource-management";
 import type { ConsoleDep } from "@evolu/common";
 import type {
 	CreateDbWorker,

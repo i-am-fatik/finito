@@ -24,7 +24,6 @@ import { PaymentDefaultMethodType } from "@/lib/evolu/model/payment-default-meth
 import { PaymentReceiptLineKind } from "@/lib/evolu/model/payment-receipt";
 import { PaymentWatchingStopReason } from "@/lib/evolu/model/payment-watching-state";
 import { TableIdSchema } from "@/lib/evolu/types";
-import { ensureDisposableStackPolyfill } from "@/lib/polyfills/disposable-stack";
 import {
 	ConstantSymbolSchema,
 	CountryCode,
@@ -767,7 +766,6 @@ export const createAppEvolu = async (props: {
 	mnemonic: Mnemonic;
 	transports: ReadonlyArray<OwnerTransport>;
 }) => {
-	await ensureDisposableStackPolyfill();
 	const deps = createFinitoEvoluDeps();
 	watchEvoluErrors(deps.evoluError);
 	const run = createRun(deps);
