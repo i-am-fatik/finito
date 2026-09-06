@@ -73,6 +73,11 @@ import {
 import { cn } from "@/lib/shared/ui/cn";
 import { formatMoney } from "@/lib/shared/utils/format";
 import { clientBaseUrl } from "@/lib/shared/utils/window";
+import {
+	convertMinorUnitsWithRate,
+	currencyFractionDigits,
+	currencyFractionDigitsForUI,
+} from "@/lib/shared/zod/money-codec";
 
 type PosBillItem = Pos["bills"][Id]["items"][number];
 
@@ -135,7 +140,14 @@ const calculateBillTotals = (props: {
 		[...totalPerCurrency.entries()].reduce((acc, [currency, value]) => {
 			const rate = props.rates.find((item) => item.currency === currency);
 
-			return Math.round(value / (rate?.rate ?? 1)) + acc;
+			return (
+				convertMinorUnitsWithRate({
+					value,
+					sourceCurrency: currency,
+					targetCurrency: props.billCurrency,
+					rate: rate?.rate ?? 1,
+				}) + acc
+			);
 		}, 0),
 	);
 
@@ -607,6 +619,49 @@ export const PosBill: React.FC<{
 					items: props.bill.items,
 					rates: props.bill.rates,
 				});
+
+	const bill = props.bill;
+	useEffect(() => {
+		if (bill === undefined || billId === undefined) {
+			return;
+		}
+
+		let ignore = false;
+		for (const currency of billTotals.totalPerCurrency.keys()) {
+			if (
+				currency === bill.currency ||
+				bill.rates.some((rate) => rate.currency === currency)
+			) {
+				continue;
+			}
+
+			const probe = Integer(10 ** currencyFractionDigits[bill.currency]);
+			void currencyConverter
+				.convert({
+					amount: probe,
+					sourceCurrency: bill.currency,
+					targetCurrency: currency,
+				})
+				.then((converted) => {
+					if (ignore || converted === null) {
+						return;
+					}
+
+					setBillRate({
+						billId,
+						currency,
+						rate:
+							converted /
+							10 ** currencyFractionDigitsForUI[currency] /
+							(probe / 10 ** currencyFractionDigitsForUI[bill.currency]),
+					});
+				});
+		}
+
+		return () => {
+			ignore = true;
+		};
+	}, [bill, billId, billTotals.totalPerCurrency, setBillRate]);
 
 	const selectedItems = useMemo(
 		() =>

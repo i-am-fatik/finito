@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Currency, Integer, NumberString } from "@/lib/shared/types";
 import {
+	convertMinorUnitsWithRate,
 	decimalStringToMinorUnits,
 	decimalStringToMinorUnitsForUI,
 	minorUnitsToDecimalString,
@@ -71,4 +72,36 @@ describe("money codec", () => {
 		).toBe(NumberString("-49.9"));
 	});
 
+	it("converts sats to a fiat currency with a different scale", () => {
+		expect(
+			convertMinorUnitsWithRate({
+				value: Integer(138),
+				sourceCurrency: Currency.BTC,
+				targetCurrency: Currency.USD,
+				rate: 1042,
+			}),
+		).toBe(Integer(13));
+	});
+
+	it("keeps a plain rate working between two fiat currencies", () => {
+		expect(
+			convertMinorUnitsWithRate({
+				value: Integer(230),
+				sourceCurrency: Currency.CZK,
+				targetCurrency: Currency.USD,
+				rate: 23,
+			}),
+		).toBe(Integer(10));
+	});
+
+	it("converts a fiat currency to sats", () => {
+		expect(
+			convertMinorUnitsWithRate({
+				value: Integer(100),
+				sourceCurrency: Currency.USD,
+				targetCurrency: Currency.BTC,
+				rate: 0.00096,
+			}),
+		).toBe(Integer(1042));
+	});
 });

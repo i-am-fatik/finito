@@ -113,6 +113,23 @@ export const minorUnitsToDecimalStringForUI = (props: Money): string =>
 		fractionDigits: currencyFractionDigitsForUI[props.currency],
 	});
 
+export const convertMinorUnitsWithRate = (props: {
+	value: Integer;
+	sourceCurrency: Currency;
+	targetCurrency: Currency;
+	rate: number;
+}): Integer => {
+	const sourceAmount =
+		props.value / 10 ** currencyFractionDigitsForUI[props.sourceCurrency];
+
+	return Integer(
+		Math.round(
+			(sourceAmount / props.rate) *
+				10 ** currencyFractionDigitsForUI[props.targetCurrency],
+		),
+	);
+};
+
 export const moneyCodec = z.codec(MoneyInputSchema, MoneyOutputSchema, {
 	decode: (input, ctx) => {
 		const minorUnits = decimalStringToMinorUnits({
