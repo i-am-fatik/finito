@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ExchangeRateSourceSync } from "@/components/exchange-rate-source-sync";
 import { McpBridge } from "@/components/mcp-bridge";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
@@ -25,6 +26,9 @@ export default function Layout({
 			</SidebarInset>
 			<Suspense fallback={null}>
 				<McpBridge />
+			</Suspense>
+			<Suspense fallback={null}>
+				<ExchangeRateSourceSync />
 			</Suspense>
 		</SidebarProvider>
 	);

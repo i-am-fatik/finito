@@ -20,8 +20,11 @@ import { useEvolu } from "@/hooks/use-evolu";
 import { createQuery } from "@/lib/evolu";
 import { PaymentMethod } from "@/lib/evolu/model/payment";
 import { TableIdSchema } from "@/lib/evolu/types";
+import { defaultExchangeRateSource } from "@/lib/integrations/currency-converter/currency-converter";
+import { exchangePresetLabels } from "@/lib/integrations/currency-converter/exchange-presets";
 import {
 	Currency,
+	ExchangeRateSource,
 	NonEmptyString255Schema,
 	PercentSchema,
 	StringToNullableStringSchema,
@@ -33,6 +36,7 @@ export const billingSettingsFormSchema = z.object({
 	ownContactId: TableIdSchema.nullable(),
 	defaultCurrency: z.enum(Currency),
 	defaultTimezone: z.enum(Timezone),
+	exchangeRateSource: z.enum(ExchangeRateSource),
 	taxRates: z
 		.object({
 			id: TableIdSchema,
@@ -63,6 +67,7 @@ export const createBillingSettingsDefaultValues = () =>
 		ownContactId: null,
 		defaultCurrency: Currency.USD,
 		defaultTimezone: Timezone["Europe/Prague"],
+		exchangeRateSource: defaultExchangeRateSource,
 		taxRates: [createTaxRate()],
 		defaultPaymentMethod: PaymentMethod.Cash,
 		defaultBankTransferCzKey: null,
@@ -116,6 +121,17 @@ const createComponents = (t: TFunction) => {
 					values: Timezone,
 					allowEmpty: false,
 					label: t("settings:form.billing-settings-form.label.timezone"),
+				}),
+
+				...builder.magicInput("exchangeRateSource").select({
+					values: exchangePresetLabels,
+					allowEmpty: false,
+					label: t(
+						"settings:form.billing-settings-form.label.exchange-rate-source",
+					),
+					description: t(
+						"settings:form.billing-settings-form.description.exchange-rate-source",
+					),
 				}),
 			},
 		),
@@ -188,6 +204,7 @@ export const BillingSettingsForm: React.FC<{
 					ownContactId: values.ownContactId,
 					defaultCurrency: values.defaultCurrency,
 					defaultTimezone: values.defaultTimezone,
+					exchangeRateSource: values.exchangeRateSource,
 					defaultPaymentMethod: values.defaultPaymentMethod,
 					defaultBankTransferCzKey: values.defaultBankTransferCzKey,
 					defaultLnZapKey: values.defaultLnZapKey,

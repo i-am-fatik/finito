@@ -30,6 +30,7 @@ import {
 	Currency,
 	DateStringSchema,
 	EmailSchema,
+	ExchangeRateSource,
 	FiatCurrency,
 	HttpsUrlSchema,
 	IbanSchema,
@@ -534,6 +535,7 @@ export const AppSchema = {
 		ownContactId: TableIdSchema.nullable(),
 		defaultCurrency: z.enum(Currency),
 		defaultTimezone: z.enum(Timezone),
+		exchangeRateSource: z.enum(ExchangeRateSource).nullable(),
 		// Optional FK to account row used for bank transfer defaults.
 		defaultPaymentMethodBankAccountKey: NullableTableIdSchema,
 		defaultPaymentMethod: z.enum(PaymentMethod),

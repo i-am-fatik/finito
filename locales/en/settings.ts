@@ -130,6 +130,7 @@ const locale = {
         "own-contact": "Own contact",
         "default-invoice-due-date": "Default invoice due date",
         "default-currency": "Default currency",
+        "exchange-rate-source": "Exchange rate source",
         "timezone": "Timezone",
         "default-invoice-payment-method": "Default invoice payment method",
         "default-bank-account": "Default bank account",
@@ -141,7 +142,8 @@ const locale = {
         "email-body": "Email body"
       },
       "description": {
-        "in-days": "In days"
+        "in-days": "In days",
+        "exchange-rate-source": "Preferred source of the bitcoin rate. A source that does not quote the pair a bill needs is skipped for that bill."
       },
       "addRowLabel": {
         "add-rate": "Add rate"

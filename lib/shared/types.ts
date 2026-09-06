@@ -318,6 +318,16 @@ export type Currency = InferEnumType<typeof Currency>;
 export const isFiatCurrency = (currency: Currency): currency is FiatCurrency =>
 	Object.hasOwn(FiatCurrency, currency);
 
+export const ExchangeRateSource = {
+	coinmate: "coinmate",
+	coinbase: "coinbase",
+	kraken: "kraken",
+	bitstamp: "bitstamp",
+	binance: "binance",
+	yadio: "yadio",
+} as const;
+export type ExchangeRateSource = InferEnumType<typeof ExchangeRateSource>;
+
 export const CountryCode = {
 	CZ: "CZ",
 } as const;

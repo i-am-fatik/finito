@@ -130,6 +130,7 @@ const locale = {
         "own-contact": "Vlastní kontakt",
         "default-invoice-due-date": "Výchozí splatnost faktury",
         "default-currency": "Výchozí měna",
+        "exchange-rate-source": "Zdroj kurzu",
         "timezone": "Časové pásmo",
         "default-invoice-payment-method": "Výchozí způsob úhrady faktury",
         "default-bank-account": "Výchozí bankovní účet",
@@ -141,7 +142,8 @@ const locale = {
         "email-body": "Tělo e-mailu"
       },
       "description": {
-        "in-days": "Ve dnech"
+        "in-days": "Ve dnech",
+        "exchange-rate-source": "Odkud se bere kurz bitcoinu. Zdroj, který daný pár nekotuje, se u takového účtu přeskočí."
       },
       "addRowLabel": {
         "add-rate": "Přidat sazbu"
