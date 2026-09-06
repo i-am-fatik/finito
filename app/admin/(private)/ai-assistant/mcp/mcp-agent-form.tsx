@@ -160,20 +160,24 @@ export const McpAgentForm: React.FC<{
 					id: editedAgent.id,
 					label: values.label,
 				});
-				const grantIds = new Map(
-					editedAgent.scopes.map((row) => [row.scope, row.id]),
-				);
 				for (const [, scope] of scopeFields) {
-					const grantId = grantIds.get(scope);
-					if (granted.has(scope) && grantId === undefined) {
-						evolu.insert("aiAgentScope", {
-							aiAgentId: editedAgent.id,
-							scope,
-						});
+					const liveGrants = editedAgent.scopes.filter(
+						(row) => row.scope === scope,
+					);
+
+					if (granted.has(scope)) {
+						if (liveGrants.length === 0) {
+							evolu.insert("aiAgentScope", {
+								aiAgentId: editedAgent.id,
+								scope,
+							});
+						}
+						continue;
 					}
-					if (!granted.has(scope) && grantId !== undefined) {
+
+					for (const grant of liveGrants) {
 						evolu.update("aiAgentScope", {
-							id: grantId,
+							id: grant.id,
 							isDeleted: sqliteTrue,
 						});
 					}
