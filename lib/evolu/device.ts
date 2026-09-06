@@ -12,6 +12,7 @@ import { z } from "zod";
 import { watchEvoluErrors } from "@/lib/diagnostics/collector";
 import { createFinitoEvoluDeps } from "@/lib/evolu/deps";
 import { TableIdSchema } from "@/lib/evolu/types";
+import { ensureDisposableStackPolyfill } from "@/lib/polyfills/disposable-stack";
 import {
 	NonEmptyString255Schema,
 	SqliteBoolSchema,
@@ -69,6 +70,7 @@ const DeviceSchema = {
 export const createDeviceQuery = createQueryBuilder(DeviceSchema);
 
 export const createDeviceEvolu = async () => {
+	await ensureDisposableStackPolyfill();
 	const deps = createFinitoEvoluDeps();
 	watchEvoluErrors(deps.evoluError);
 	const run = createRun(deps);
