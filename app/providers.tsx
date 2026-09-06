@@ -7,6 +7,7 @@ import { AdditionalPrecacheProgressToast } from "@/components/additional-precach
 import { BuildUpdateToast } from "@/components/build-update-toast";
 import { GlobalDialogHost } from "@/components/global-dialog-host";
 import { I18nProvider } from "@/components/i18n-provider";
+import { TauriConsoleLog } from "@/components/tauri-console-log";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -34,6 +35,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 							<AdditionalPrecacheProgressToast />
 							<BuildUpdateToast />
 							<GlobalDialogHost />
+							<TauriConsoleLog />
 						</TooltipProvider>
 					</QueryClientProvider>
 				</Provider>
