@@ -673,6 +673,24 @@ export const PosBill: React.FC<{
 		[tables, props.bill?.table?.id],
 	);
 
+	const compatibleBillOptions = useMemo(
+		() =>
+			compatibleBills.map((bill) => ({
+				value: bill.id,
+				label: getBillTargetLabel(bill),
+			})),
+		[compatibleBills],
+	);
+
+	const otherTableOptions = useMemo(
+		() =>
+			otherTables.map((table) => ({
+				value: table.id,
+				label: table.label,
+			})),
+		[otherTables],
+	);
+
 	useEffect(() => {
 		const bill = props.bill;
 		if (bill === undefined) {
@@ -1140,6 +1158,7 @@ export const PosBill: React.FC<{
 
 						<div className="space-y-4">
 							<Select
+								items={compatibleBillOptions}
 								value={selectedExistingBillId ?? undefined}
 								onValueChange={(value) =>
 									setSelectedExistingBillId(value as Id)
@@ -1190,6 +1209,7 @@ export const PosBill: React.FC<{
 
 						<div className="space-y-4">
 							<Select
+								items={otherTableOptions}
 								value={selectedTableId ?? undefined}
 								onValueChange={(value) => setSelectedTableId(value as Id)}
 							>
