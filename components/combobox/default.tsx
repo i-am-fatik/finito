@@ -6,7 +6,7 @@ import {
 	XIcon,
 } from "lucide-react";
 import * as React from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { JsonValue } from "type-fest";
 import { Overlay } from "@/components/overlay";
 import { Button } from "@/components/ui/button";
@@ -114,15 +114,6 @@ export const ComboboxDefault = <TItem extends JsonValue>(
 		setEditMode(false);
 	};
 
-	const itemsMap = useMemo(
-		() =>
-			(props.items ?? []).reduce((acc, item) => {
-				acc.set(item.value, item.label);
-				return acc;
-			}, new Map()),
-		[props.items],
-	);
-
 	const EditComponent = props.EditComponent ?? DefaultEdit;
 
 	if (editMode !== false && EditComponent === DefaultEdit) {
@@ -144,7 +135,9 @@ export const ComboboxDefault = <TItem extends JsonValue>(
 	const allItems = [
 		...(props.value !== undefined &&
 		props.value !== null &&
-		!itemsMap.has(props.value)
+		!(props.items ?? []).some((item) =>
+			compareFunction(item.value, props.value),
+		)
 			? [
 					{
 						value: props.value,
@@ -260,6 +253,7 @@ export const ComboboxDefault = <TItem extends JsonValue>(
 										<CommandItem
 											key={index.toString()}
 											value={index.toString()}
+											keywords={[String(item.label)]}
 											onSelect={() => {
 												console.log("onSelect", allItems[index]);
 
