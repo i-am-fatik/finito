@@ -22,12 +22,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { FiatCurrency, Timezone } from "@/lib/shared/types";
+import { Currency, Timezone } from "@/lib/shared/types";
 
-type DefaultCurrency = (typeof FiatCurrency)[keyof typeof FiatCurrency];
+type DefaultCurrency = (typeof Currency)[keyof typeof Currency];
 type DefaultTimezone = (typeof Timezone)[keyof typeof Timezone];
 
-const defaultCurrencyValues = Object.values(FiatCurrency) as DefaultCurrency[];
+const defaultCurrencyValues = Object.values(Currency) as DefaultCurrency[];
 const defaultTimezoneValues = Object.values(Timezone) as DefaultTimezone[];
 
 const createDefaultTimezone = (): DefaultTimezone => {
@@ -48,7 +48,7 @@ export default function Page() {
 		createDefaultAccountName(),
 	);
 	const [defaultCurrency, setDefaultCurrency] = useState<DefaultCurrency>(
-		FiatCurrency.USD,
+		Currency.USD,
 	);
 	const [defaultTimezone, setDefaultTimezone] = useState<DefaultTimezone>(() =>
 		createDefaultTimezone(),

@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { FiatCurrency, Timezone } from "@/lib/shared/types";
+import { Currency, Timezone } from "@/lib/shared/types";
 
 const onboardingNewSettingsSessionKey = "finito.onboarding.new.settings";
 
 const onboardingSettingsSchema = z.object({
 	accountName: z.string(),
-	defaultCurrency: z.enum(FiatCurrency),
+	defaultCurrency: z.enum(Currency),
 	defaultTimezone: z.enum(Timezone),
 });
 

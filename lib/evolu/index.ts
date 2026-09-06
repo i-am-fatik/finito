@@ -518,7 +518,7 @@ export const AppSchema = {
 	billingSettings: {
 		id: TableIdSchema,
 		ownContactId: TableIdSchema.nullable(),
-		defaultCurrency: z.enum(FiatCurrency),
+		defaultCurrency: z.enum(Currency),
 		defaultTimezone: z.enum(Timezone),
 		// Optional FK to account row used for bank transfer defaults.
 		defaultPaymentMethodBankAccountKey: NullableTableIdSchema,

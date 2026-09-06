@@ -36,11 +36,10 @@ export const currencyFractionDigitsForUI: Record<Currency, Integer> = {
 	BTC: Integer(0), // We want to present BTC in sats
 };
 
-export const decimalStringToMinorUnits = (props: {
+const parseDecimalString = (props: {
 	value: string;
-	currency: Currency;
+	fractionDigits: Integer;
 }): Integer | null => {
-	const fractionDigits = currencyFractionDigits[props.currency];
 	const normalized = props.value.trim();
 	if (!/^-?\d+(\.\d+)?$/.test(normalized)) {
 		return null;
@@ -49,53 +48,70 @@ export const decimalStringToMinorUnits = (props: {
 	const isNegative = normalized.startsWith("-");
 	const unsigned = isNegative ? normalized.slice(1) : normalized;
 	const [integerPart, fractionPartRaw = ""] = unsigned.split(".");
-	if (fractionPartRaw.length > fractionDigits) {
+	if (fractionPartRaw.length > props.fractionDigits) {
 		return null;
 	}
 
-	const paddedFraction = fractionPartRaw.padEnd(fractionDigits, "0");
+	const paddedFraction = fractionPartRaw.padEnd(props.fractionDigits, "0");
 	const digits = `${integerPart}${paddedFraction}`.replace(/^0+(?=\d)/, "");
 	const minorUnits = Integer(digits === "" ? 0 : Number(digits));
 	return isNegative ? Integer(-minorUnits) : minorUnits;
 };
 
-export const minorUnitsToDecimalString = (props: Money): NumberString => {
-	const fractionDigits = currencyFractionDigits[props.currency];
-	const isNegative = props.value < BigInt(0);
+export const decimalStringToMinorUnits = (props: {
+	value: string;
+	currency: Currency;
+}): Integer | null =>
+	parseDecimalString({
+		value: props.value,
+		fractionDigits: currencyFractionDigits[props.currency],
+	});
+
+export const decimalStringToMinorUnitsForUI = (props: {
+	value: string;
+	currency: Currency;
+}): Integer | null =>
+	parseDecimalString({
+		value: props.value,
+		fractionDigits: currencyFractionDigitsForUI[props.currency],
+	});
+
+const renderDecimalString = (props: {
+	value: Integer;
+	fractionDigits: Integer;
+}): string => {
+	const isNegative = props.value < 0;
 	const abs = isNegative ? -props.value : props.value;
 
-	if (fractionDigits === 0) {
-		const result = abs.toString();
-		return NumberString(isNegative && result !== "0" ? `-${result}` : result);
-	}
-
-	const text = abs.toString().padStart(fractionDigits + 1, "0");
-	const integerPart = text.slice(0, -fractionDigits).replace(/^0+(?=\d)/, "");
-	const fractionPart = text.slice(-fractionDigits).replace(/0+$/, "");
-	const base =
-		fractionPart === "" ? integerPart : `${integerPart}.${fractionPart}`;
-
-	return NumberString(isNegative && base !== "0" ? `-${base}` : base);
-};
-
-export const minorUnitsToDecimalStringForUI = (props: Money): string => {
-	const fractionDigits = currencyFractionDigitsForUI[props.currency];
-	const isNegative = props.value < BigInt(0);
-	const abs = isNegative ? -props.value : props.value;
-
-	if (fractionDigits === 0) {
+	if (props.fractionDigits === 0) {
 		const result = abs.toString();
 		return isNegative && result !== "0" ? `-${result}` : result;
 	}
 
-	const text = abs.toString().padStart(fractionDigits + 1, "0");
-	const integerPart = text.slice(0, -fractionDigits).replace(/^0+(?=\d)/, "");
-	const fractionPart = text.slice(-fractionDigits).replace(/0+$/, "");
+	const text = abs.toString().padStart(props.fractionDigits + 1, "0");
+	const integerPart = text
+		.slice(0, -props.fractionDigits)
+		.replace(/^0+(?=\d)/, "");
+	const fractionPart = text.slice(-props.fractionDigits).replace(/0+$/, "");
 	const base =
 		fractionPart === "" ? integerPart : `${integerPart}.${fractionPart}`;
 
 	return isNegative && base !== "0" ? `-${base}` : base;
 };
+
+export const minorUnitsToDecimalString = (props: Money): NumberString =>
+	NumberString(
+		renderDecimalString({
+			value: props.value,
+			fractionDigits: currencyFractionDigits[props.currency],
+		}),
+	);
+
+export const minorUnitsToDecimalStringForUI = (props: Money): string =>
+	renderDecimalString({
+		value: props.value,
+		fractionDigits: currencyFractionDigitsForUI[props.currency],
+	});
 
 export const moneyCodec = z.codec(MoneyInputSchema, MoneyOutputSchema, {
 	decode: (input, ctx) => {

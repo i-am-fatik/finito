@@ -315,6 +315,9 @@ export const Currency = {
 } as const;
 export type Currency = InferEnumType<typeof Currency>;
 
+export const isFiatCurrency = (currency: Currency): currency is FiatCurrency =>
+	Object.hasOwn(FiatCurrency, currency);
+
 export const CountryCode = {
 	CZ: "CZ",
 } as const;

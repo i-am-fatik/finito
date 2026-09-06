@@ -115,6 +115,19 @@ export type AutoFormComponents<
 	[key in keyof TSchema]-?: AutoFormComponent<TSchema[key]>;
 };
 
+const satsPerBtcExponent = 8;
+
+const shiftAmountString = (value: string, shift: number) => {
+	const parsed = NumberStringSchema.safeParse(value);
+	return parsed.success ? shiftNumericString(parsed.data, shift) : value;
+};
+
+const btcToSats = (value: string) =>
+	shiftAmountString(value, satsPerBtcExponent);
+
+const satsToBtc = (value: string) =>
+	shiftAmountString(value, -satsPerBtcExponent);
+
 export type AutoFormBaseSchema =
 	| z.ZodObject
 	| z.ZodPipe<z.ZodObject | z.ZodUnion<readonly z.ZodObject[]>>
@@ -381,20 +394,18 @@ export const AutoFormInput = {
 											disabled={params.disabled}
 											type={params.type}
 											placeholder={params.placeholder}
-											value={field.value}
+											value={
+												currencyValue === Currency.BTC
+													? btcToSats(field.value)
+													: field.value
+											}
 											onChange={(e) => {
 												if (currencyValue === Currency.BTC) {
-													const value = NumberStringSchema.safeParse(
-														e.target.value,
-													);
-
 													return field.onChange({
 														...e,
 														target: {
 															...e.target,
-															value: value.success
-																? shiftNumericString(value.data, -8)
-																: e.target.value,
+															value: satsToBtc(e.target.value),
 														},
 													});
 												}

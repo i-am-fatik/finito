@@ -28,6 +28,7 @@ import {
 	FiatCurrency,
 	Integer,
 	type Integer as IntegerType,
+	isFiatCurrency,
 	type NonNegativeInteger,
 	NonNegativeIntegerSchema,
 	StringToNumberSchema,
@@ -153,7 +154,8 @@ export const SendOrReceivePayment: React.FC<{
 			if (
 				!ignore &&
 				defaultCurrency !== null &&
-				defaultCurrency !== undefined
+				defaultCurrency !== undefined &&
+				isFiatCurrency(defaultCurrency)
 			) {
 				setFiatCurrency(defaultCurrency);
 			}

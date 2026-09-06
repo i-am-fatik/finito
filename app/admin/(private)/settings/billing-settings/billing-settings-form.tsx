@@ -21,7 +21,7 @@ import { createQuery } from "@/lib/evolu";
 import { PaymentMethod } from "@/lib/evolu/model/payment";
 import { TableIdSchema } from "@/lib/evolu/types";
 import {
-	FiatCurrency,
+	Currency,
 	NonEmptyString255Schema,
 	PercentSchema,
 	StringToNullableStringSchema,
@@ -31,7 +31,7 @@ import {
 
 export const billingSettingsFormSchema = z.object({
 	ownContactId: TableIdSchema.nullable(),
-	defaultCurrency: z.enum(FiatCurrency),
+	defaultCurrency: z.enum(Currency),
 	defaultTimezone: z.enum(Timezone),
 	taxRates: z
 		.object({
@@ -61,7 +61,7 @@ const createTaxRate = () => ({
 export const createBillingSettingsDefaultValues = () =>
 	({
 		ownContactId: null,
-		defaultCurrency: FiatCurrency.USD,
+		defaultCurrency: Currency.USD,
 		defaultTimezone: Timezone["Europe/Prague"],
 		taxRates: [createTaxRate()],
 		defaultPaymentMethod: PaymentMethod.Cash,
@@ -105,7 +105,7 @@ const createComponents = (t: TFunction) => {
 					<OwnContactComboboxInput {...props} />
 				)),
 				...builder.magicInput("defaultCurrency").select({
-					values: FiatCurrency,
+					values: Currency,
 					allowEmpty: false,
 					label: t(
 						"settings:form.billing-settings-form.label.default-currency",

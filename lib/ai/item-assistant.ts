@@ -12,7 +12,7 @@ export const createItemToolInputSchema = z.object({
 		.trim()
 		.min(1)
 		.describe(
-			"Decimal price string in major units. Use dot as decimal separator. Example: 49.90",
+			"Decimal price string in the display units of the currency, sats for BTC. Use dot as decimal separator. Example: 49.90",
 		),
 	currency: z
 		.enum(Currency)

@@ -26,7 +26,7 @@ import {
 import { createQuery } from "@/lib/evolu";
 import { createCatalogItem } from "@/lib/item/service";
 import { NonEmptyString, NonEmptyString255 } from "@/lib/shared/types";
-import { decimalStringToMinorUnits } from "@/lib/shared/zod/money-codec";
+import { decimalStringToMinorUnitsForUI } from "@/lib/shared/zod/money-codec";
 
 type ChatMessage = {
 	id: string;
@@ -140,7 +140,7 @@ export function AiAssistantChat() {
 							}
 
 							const normalizedPrice = input.price.replace(",", ".").trim();
-							const price = decimalStringToMinorUnits({
+							const price = decimalStringToMinorUnitsForUI({
 								value: normalizedPrice,
 								currency,
 							});
