@@ -91,7 +91,8 @@ const locale = {
       "payments_read": "Platby: čtení",
       "payments_write": "Platby: vytváření požadavků",
       "contacts_read": "Kontakty: čtení",
-      "settings_write": "Nastavení: výchozí měna a jazyk aplikace"
+      "settings_write": "Nastavení: výchozí měna a jazyk aplikace",
+      "diagnostics_read": "Diagnostika: čtení zachycených chyb"
     },
     "token": {
       "title": "Token agenta {{label}}",

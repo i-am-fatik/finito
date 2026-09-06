@@ -11,6 +11,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { type PosBill, posBillQuery } from "@/hooks/use-pos";
 import { createItemToolInputSchema } from "@/lib/ai/item-assistant";
+import type { DiagnosticEvent } from "@/lib/diagnostics/collector";
 import { createQuery } from "@/lib/evolu";
 import { AiAgentScope } from "@/lib/evolu/model/ai-agent";
 import { getAllCatalogItemsQuery } from "@/lib/evolu/queries/catalog-item";
@@ -43,6 +44,7 @@ export type AgentToolDeps = EvoluDep &
 	NdkDep & {
 		deviceId: Id;
 		setLanguage: (language: AppLanguage) => Promise<void>;
+		readDiagnostics: () => ReadonlyArray<DiagnosticEvent>;
 	};
 
 const settingsId = createIdFromString("");
@@ -779,6 +781,46 @@ const registerSettingsWriteTools = (server: McpServer, deps: AgentToolDeps) => {
 	);
 };
 
+const registerDiagnosticsReadTools = (
+	server: McpServer,
+	deps: AgentToolDeps,
+) => {
+	server.registerTool(
+		"diagnostics_list_errors",
+		{
+			title: "List the collected errors",
+			description:
+				"Lists the console errors, unhandled exceptions, failed loads and Evolu errors the finito app collected on this device, newest first. Read it to find what to fix.",
+			inputSchema: {
+				limit: z
+					.number()
+					.int()
+					.min(1)
+					.max(200)
+					.optional()
+					.describe("How many of the newest entries to return, 50 by default."),
+			},
+			annotations: readOnly,
+		},
+		({ limit }) =>
+			guard(async () =>
+				text(
+					deps
+						.readDiagnostics()
+						.slice(0, limit ?? 50)
+						.map((event) => ({
+							at: new Date(event.at).toISOString(),
+							level: event.level,
+							source: event.source,
+							page: event.page,
+							count: event.count,
+							message: event.message,
+						})),
+				),
+			),
+	);
+};
+
 const registrations: ReadonlyArray<
 	[AiAgentScope, (server: McpServer, deps: AgentToolDeps) => void]
 > = [
@@ -790,6 +832,7 @@ const registrations: ReadonlyArray<
 	[AiAgentScope.PaymentsWrite, registerPaymentsWriteTools],
 	[AiAgentScope.ContactsRead, registerContactsReadTools],
 	[AiAgentScope.SettingsWrite, registerSettingsWriteTools],
+	[AiAgentScope.DiagnosticsRead, registerDiagnosticsReadTools],
 ];
 
 export const registerAgentTools = (

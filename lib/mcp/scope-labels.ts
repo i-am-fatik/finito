@@ -9,4 +9,5 @@ export const scopeLabelKeys = {
 	payments_write: "settings:mcp.scopes.payments_write",
 	contacts_read: "settings:mcp.scopes.contacts_read",
 	settings_write: "settings:mcp.scopes.settings_write",
+	diagnostics_read: "settings:mcp.scopes.diagnostics_read",
 } as const satisfies Record<AiAgentScope, string>;

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { accountAtom, hasDeviceAccountAtom } from "@/atoms/account";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useNostr } from "@/hooks/use-nostr";
+import { readDiagnostics } from "@/lib/diagnostics/collector";
 import { setAppLanguage } from "@/lib/i18n/client";
 import {
 	handleMcpHttpRequest,
@@ -37,6 +38,7 @@ const McpBridgeListener = () => {
 				ndk,
 				deviceId: account.device.id,
 				setLanguage: setAppLanguage,
+				readDiagnostics,
 			}),
 		[evolu, ndk, account.device.id],
 	);

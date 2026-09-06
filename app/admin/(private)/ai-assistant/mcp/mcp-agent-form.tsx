@@ -39,6 +39,7 @@ const scopeFields = [
 	["paymentsWrite", AiAgentScope.PaymentsWrite],
 	["contactsRead", AiAgentScope.ContactsRead],
 	["settingsWrite", AiAgentScope.SettingsWrite],
+	["diagnosticsRead", AiAgentScope.DiagnosticsRead],
 ] as const;
 
 const scopeFieldNames = scopeFields.map(([field]) => field);
@@ -54,6 +55,7 @@ export const mcpAgentFormSchema = z.object({
 	paymentsWrite: z.boolean(),
 	contactsRead: z.boolean(),
 	settingsWrite: z.boolean(),
+	diagnosticsRead: z.boolean(),
 });
 
 type McpAgentFormValues = z.input<typeof mcpAgentFormSchema>;

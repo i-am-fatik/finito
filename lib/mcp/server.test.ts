@@ -63,6 +63,27 @@ const billRow = {
 	rates: [],
 };
 
+const diagnosticRows = [
+	{
+		id: 2,
+		at: 1_760_000_000_000,
+		level: "error",
+		source: "console",
+		message: "newest",
+		page: "/admin/pos",
+		count: 2,
+	},
+	{
+		id: 1,
+		at: 1_759_999_000_000,
+		level: "warning",
+		source: "window",
+		message: "older",
+		page: "/admin",
+		count: 1,
+	},
+] as const;
+
 const paramsOf = (query: string) =>
 	(JSON.parse(query)[1] as ReadonlyArray<readonly [string, unknown]>).map(
 		([, value]) => value,
@@ -121,6 +142,7 @@ const setup = (params: {
 		setLanguage: async (language: string) => {
 			languages.push(language);
 		},
+		readDiagnostics: () => diagnosticRows,
 	} as unknown as AgentToolDeps & { now: () => number };
 
 	return { ...evolu, languages, handle: handleMcpHttpRequest(deps) };
@@ -474,5 +496,37 @@ describe("handleMcpHttpRequest", () => {
 		expect(JSON.parse(response.body).result.instructions).toContain(
 			"contacts_read",
 		);
+	});
+
+	it("lists the collected errors newest first, and only under the diagnostics scope", async () => {
+		const without = setup({ scopes: [AiAgentScope.CatalogRead] });
+		const listed = await without.handle(post({ body: rpc("tools/list") }));
+		expect(
+			resultOf(listed).result?.tools?.map((tool) => tool.name),
+		).not.toContain("diagnostics_list_errors");
+
+		const { handle } = setup({ scopes: [AiAgentScope.DiagnosticsRead] });
+		const response = await handle(
+			post({
+				body: rpc("tools/call", {
+					name: "diagnostics_list_errors",
+					arguments: { limit: 1 },
+				}),
+			}),
+		);
+
+		expect(resultOf(response).result?.isError).toBeUndefined();
+		expect(
+			JSON.parse(resultOf(response).result?.content?.[0]?.text ?? ""),
+		).toEqual([
+			{
+				at: "2025-10-09T08:53:20.000Z",
+				level: "error",
+				source: "console",
+				page: "/admin/pos",
+				count: 2,
+				message: "newest",
+			},
+		]);
 	});
 });

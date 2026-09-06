@@ -91,7 +91,8 @@ const locale = {
       "payments_read": "Payments: read",
       "payments_write": "Payments: create requests",
       "contacts_read": "Contacts: read",
-      "settings_write": "Settings: default currency and app language"
+      "settings_write": "Settings: default currency and app language",
+      "diagnostics_read": "Diagnostics: read the collected errors"
     },
     "token": {
       "title": "Token for {{label}}",
