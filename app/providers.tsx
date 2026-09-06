@@ -6,6 +6,7 @@ import { createStore, Provider } from "jotai";
 import { AdditionalPrecacheProgressToast } from "@/components/additional-precache-progress-toast";
 import { BuildUpdateToast } from "@/components/build-update-toast";
 import { DiagnosticsCollector } from "@/components/diagnostics-collector";
+import { ExternalLinkOpener } from "@/components/external-link-opener";
 import { GlobalDialogHost } from "@/components/global-dialog-host";
 import { I18nProvider } from "@/components/i18n-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -36,6 +37,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 							<BuildUpdateToast />
 							<GlobalDialogHost />
 							<DiagnosticsCollector />
+							<ExternalLinkOpener />
 						</TooltipProvider>
 					</QueryClientProvider>
 				</Provider>

@@ -12,6 +12,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(mcp_bridge::McpBridge::new())
         .on_page_load(|webview, payload| {
             if webview.label() == mcp_bridge::MAIN_WINDOW
