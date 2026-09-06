@@ -13,6 +13,8 @@ import {
 	tableRequestMessageBus,
 } from "@/lib/table/message-bus";
 
+export const tableBillIdPrefix = "t-";
+
 const refusalNoticeMs = 4_000;
 
 export class TableDriver implements BillDriver {
@@ -25,10 +27,10 @@ export class TableDriver implements BillDriver {
 		let isInsideThePayment = false;
 		let refusalTimeout: ReturnType<typeof setTimeout> | undefined;
 		const expectedSubscriptionId = Uuid7.random();
-		const [prefix, pubkey = null, qrCodeIdFirstPart = null, ...rest] =
+		const [, pubkey = null, qrCodeIdFirstPart = null, ...rest] =
 			billId.split("-");
 		if (
-			prefix !== "t" ||
+			!billId.startsWith(tableBillIdPrefix) ||
 			typeof pubkey !== "string" ||
 			typeof qrCodeIdFirstPart !== "string"
 		) {

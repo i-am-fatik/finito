@@ -7,6 +7,7 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { hasDeviceAccountAtom } from "@/atoms/account";
 import { FinitoLogo } from "@/components/finito-logo";
+import { useTableGuestWithoutAccount } from "@/hooks/use-table-guest";
 
 const createReturnToUrl = (pathname: string, query: string, hash: string) =>
 	`${pathname}${query !== "" ? `?${query}` : ""}${hash}`;
@@ -22,12 +23,13 @@ export default function Loading() {
 	const { t } = useTranslation();
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const accountState = useAtomValue(hasDeviceAccountAtom);
+	const isTableGuest = useTableGuestWithoutAccount();
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 
 	useEffect(() => {
-		if (!accountState && !pathname.startsWith("/onboarding")) {
+		if (!accountState && !isTableGuest && !pathname.startsWith("/onboarding")) {
 			const returnTo = createReturnToUrl(
 				pathname,
 				searchParams.toString(),
@@ -35,7 +37,7 @@ export default function Loading() {
 			);
 			router.replace(createOnboardingUrl(returnTo) as never);
 		}
-	}, [accountState, pathname, searchParams, router.replace]);
+	}, [accountState, isTableGuest, pathname, searchParams, router.replace]);
 
 	useEffect(() => {
 		const mountedNode = rootRef.current;

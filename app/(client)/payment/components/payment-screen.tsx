@@ -20,6 +20,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { useTableGuestWithoutAccount } from "@/hooks/use-table-guest";
 import type { ScreenData } from "@/lib/bill/driver";
 import { createQuery } from "@/lib/evolu";
 import type { Id } from "@/lib/evolu/types";
@@ -45,6 +46,32 @@ const btcWalletsQuery = createQuery((db) =>
 			name: KyselyNotNull;
 		}>(),
 );
+
+const openInWallet = (lnInvoice: NonEmptyString) => {
+	const a = document.createElement("a");
+	a.style.display = "none";
+	a.href = `lightning:${lnInvoice}`;
+
+	document.body.appendChild(a);
+	a.click();
+	document.body.removeChild(a);
+};
+
+const OpenInWalletButton: FC<{
+	lnInvoice: NonEmptyString;
+}> = (props) => {
+	const { t } = useTranslation();
+
+	return (
+		<Button
+			size={"lg"}
+			className={"h-12 flex-1"}
+			onClick={() => openInWallet(props.lnInvoice)}
+		>
+			{t("client:paymentPage.wallets.external")}
+		</Button>
+	);
+};
 
 const PayButton: FC<{
 	lnInvoice: NonEmptyString;
@@ -74,14 +101,7 @@ const PayButton: FC<{
 			});
 
 			if (paymentMethod === "external") {
-				const a = document.createElement("a");
-				a.style.display = "none";
-				a.href = `lightning:${props.lnInvoice}`;
-				// a.target = "_blank";
-
-				document.body.appendChild(a);
-				a.click();
-				document.body.removeChild(a);
+				openInWallet(props.lnInvoice);
 				return;
 			}
 
@@ -236,6 +256,7 @@ export const PaymentScreen: FC<{
 }> = (props) => {
 	const { t } = useTranslation();
 	const { copy } = useClipboard();
+	const isTableGuest = useTableGuestWithoutAccount();
 
 	return (
 		<>
@@ -329,12 +350,21 @@ export const PaymentScreen: FC<{
 								<div className={"flex flex-col gap-4"}>
 									<div className={"flex gap-2"}>
 										<ButtonGroup className={"w-full"}>
-											<PayButton
-												lnInvoice={
-													props.screen.payload.payment.paymentSpecification
-														.lnInvoice
-												}
-											/>
+											{isTableGuest ? (
+												<OpenInWalletButton
+													lnInvoice={
+														props.screen.payload.payment.paymentSpecification
+															.lnInvoice
+													}
+												/>
+											) : (
+												<PayButton
+													lnInvoice={
+														props.screen.payload.payment.paymentSpecification
+															.lnInvoice
+													}
+												/>
+											)}
 										</ButtonGroup>
 									</div>
 								</div>

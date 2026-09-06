@@ -1,6 +1,6 @@
 import { type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import { atom } from "jotai";
-import { accountAtom } from "@/atoms/account";
+import { accountAtom, hasDeviceAccountAtom } from "@/atoms/account";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { createDeviceQuery } from "@/lib/evolu/device";
 import { WssUrl } from "@/lib/shared/types";
@@ -22,6 +22,10 @@ export const nostrRelaysAtom = atom<
 		}[]
 	>
 >(async (get) => {
+	if (!(await get(hasDeviceAccountAtom))) {
+		return defaultRelays.map((url) => ({ url }));
+	}
+
 	const account = await get(accountAtom);
 	const deviceEvolu = await get(deviceEvoluAtom);
 

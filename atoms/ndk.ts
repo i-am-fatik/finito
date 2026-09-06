@@ -5,7 +5,7 @@ import NDK, {
 } from "@nostr-dev-kit/ndk";
 import { atom } from "jotai";
 import { privateKeyFromSeedWords } from "nostr-tools/nip06";
-import { accountAtom } from "@/atoms/account";
+import { accountAtom, hasDeviceAccountAtom } from "@/atoms/account";
 import { nostrRelaysAtom } from "@/atoms/nostr-relays";
 
 const rawNdkAtom = atom<Promise<NDK>>(async () => {
@@ -28,6 +28,10 @@ const rawNdkAtom = atom<Promise<NDK>>(async () => {
 });
 
 const ndkSignerAtom = atom<Promise<NDKSigner>>(async (get) => {
+	if (!(await get(hasDeviceAccountAtom))) {
+		return NDKPrivateKeySigner.generate();
+	}
+
 	const { mnemonic } = await get(accountAtom);
 	const privateKey = privateKeyFromSeedWords(mnemonic);
 
