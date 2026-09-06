@@ -8,7 +8,12 @@ import { sql } from "kysely";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { createQuery, type EvoluSchemaType } from "@/lib/evolu";
 import type { Id } from "@/lib/evolu/types";
-import type { PositiveNumber } from "@/lib/shared/types";
+import type {
+	Currency,
+	Integer,
+	PositiveNumber,
+	TimestampMs,
+} from "@/lib/shared/types";
 
 export type PosBill = EvoluSchemaType["posBill"] & {
 	table: Pick<EvoluSchemaType["table"], "id" | "label"> | null;
@@ -26,6 +31,17 @@ export type Pos = {
 	bills: Record<Id, PosBill>;
 };
 
+export type PosClosedBill = {
+	id: Id;
+	displayId: number;
+	label: string | null;
+	tableLabel: string | null;
+	currency: Currency;
+	totalAmount: Integer;
+	paymentId: Id | null;
+	closedAt: TimestampMs;
+};
+
 export const posBillQuery = createQuery<PosBill>((db) =>
 	db
 		.selectFrom("posBill")
@@ -38,6 +54,8 @@ export const posBillQuery = createQuery<PosBill>((db) =>
 					"posBill.label as label",
 					"posBill.currency as currency",
 					"posBill.tableId as tableId",
+					"posBill.paymentId as paymentId",
+					"posBill.closedAt as closedAt",
 
 					evoluJsonObjectFrom(
 						eb
@@ -165,6 +183,7 @@ export const posBillQuery = createQuery<PosBill>((db) =>
 				] as const,
 		)
 		.where("posBill.isDeleted", "is not", sqliteTrue)
+		.where("posBill.closedAt", "is", null)
 		.where("posBill.displayId", "is not", null)
 		.where("posBill.currency", "is not", null)
 		.orderBy("posBill.createdAt", "asc")
@@ -174,12 +193,78 @@ export const posBillQuery = createQuery<PosBill>((db) =>
 		}>(),
 );
 
+export const posClosedBillsQuery = createQuery<PosClosedBill>((db) =>
+	db
+		.selectFrom("posBill")
+		.leftJoin("table", "table.id", "posBill.tableId")
+		.leftJoin("posBillItemLine", (join) =>
+			join
+				.onRef("posBillItemLine.posBillId", "=", "posBill.id")
+				.on("posBillItemLine.isDeleted", "is not", sqliteTrue),
+		)
+		.select(
+			(eb) =>
+				[
+					"posBill.id as id",
+					"posBill.displayId as displayId",
+					"posBill.label as label",
+					"table.label as tableLabel",
+					"posBill.currency as currency",
+					"posBill.paymentId as paymentId",
+					"posBill.closedAt as closedAt",
+					eb.fn
+						.coalesce(
+							eb.fn.sum<Integer>(
+								eb
+									.case()
+									.when("posBillItemLine._tag", "=", "add")
+									.then(eb.ref("posBillItemLine.totalAmount"))
+									.when("posBillItemLine._tag", "=", "remove")
+									.then(sql<number>`- ${eb.ref("posBillItemLine.totalAmount")}`)
+									.else(0)
+									.end(),
+							),
+							eb.val(0),
+						)
+						.as("totalAmount"),
+				] as const,
+		)
+		.where("posBill.isDeleted", "is not", sqliteTrue)
+		.where("posBill.closedAt", "is not", null)
+		.where("posBill.displayId", "is not", null)
+		.where("posBill.currency", "is not", null)
+		.groupBy("posBill.id")
+		.orderBy("posBill.closedAt", "desc")
+		.limit(20)
+		.$narrowType<{
+			displayId: KyselyNotNull;
+			currency: KyselyNotNull;
+			closedAt: KyselyNotNull;
+			totalAmount: KyselyNotNull;
+		}>(),
+);
+
+export const posBillLastDisplayIdQuery = createQuery((db) =>
+	db
+		.selectFrom("posBill")
+		.select((eb) =>
+			eb.fn.max<number | null>("posBill.displayId").as("lastDisplayId"),
+		)
+		.where("posBill.isDeleted", "is not", sqliteTrue),
+);
+
 export const usePosRows = (): BillRows => {
 	const { data: billRows } = useEvoluQuery(posBillQuery);
 
 	return {
 		billRows,
 	};
+};
+
+export const usePosClosedBills = (): ReadonlyArray<PosClosedBill> => {
+	const { data } = useEvoluQuery(posClosedBillsQuery);
+
+	return data;
 };
 
 export const usePos = (): Pos => {

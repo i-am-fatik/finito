@@ -2,6 +2,8 @@ import { CircleXIcon, PlusIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type FC, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { PosClosedBills } from "@/components/pos/pos-closed-bills";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBill } from "@/hooks/use-bill";
@@ -15,7 +17,7 @@ export const PosBillTabs: FC<{
 }> = (props) => {
 	const { t } = useTranslation();
 	const pos = usePos();
-	const { deleteBill, createBill } = useBill();
+	const { deleteBill, createBill, restoreBill } = useBill();
 	const { confirm } = useGlobalDialog();
 	const router = useRouter();
 	const searchParams = useSearchParams();
@@ -76,7 +78,17 @@ export const PosBillTabs: FC<{
 												return;
 											}
 										}
-										deleteBill(billId as Id);
+										const deletedBill = deleteBill(billId as Id);
+										if (deletedBill === null) {
+											return;
+										}
+										toast(t("pos:tabs.deleted", { label }), {
+											duration: 15000,
+											action: {
+												label: t("pos:tabs.undoDelete"),
+												onClick: () => restoreBill(deletedBill),
+											},
+										});
 									}}
 								>
 									<CircleXIcon />
@@ -86,19 +98,22 @@ export const PosBillTabs: FC<{
 					})}
 				</TabsList>
 			)}
-			<Button
-				size={"lg"}
-				variant={"outline"}
-				onClick={() => {
-					const { id: billId } = createBill({
-						defaultCurrency: props.defaultCurrency,
-					});
-					router.replace(`/admin/pos?id=${encodeURIComponent(billId)}`);
-				}}
-			>
-				<PlusIcon />
-				{t("pos:tabs.newBill")}
-			</Button>
+			<div className={"flex flex-wrap gap-2"}>
+				<Button
+					size={"lg"}
+					variant={"outline"}
+					onClick={() => {
+						const { id: billId } = createBill({
+							defaultCurrency: props.defaultCurrency,
+						});
+						router.replace(`/admin/pos?id=${encodeURIComponent(billId)}`);
+					}}
+				>
+					<PlusIcon />
+					{t("pos:tabs.newBill")}
+				</Button>
+				<PosClosedBills />
+			</div>
 		</Tabs>
 	);
 };

@@ -1,14 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
-import { cleanup, render, screen } from "@testing-library/react";
-import type { PosBill } from "@/hooks/use-pos";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { PosBill, PosClosedBill } from "@/hooks/use-pos";
 import { Currency } from "@/lib/shared/types";
 
 const billId = "bill-1";
 
 let bills: Record<string, PosBill> = {};
+let closedBills: PosClosedBill[] = [];
 let confirmCalls: Array<Record<string, unknown>> = [];
 let confirmAnswer = true;
 let deletedBillIds: string[] = [];
+let restoredBills: Array<Record<string, unknown>> = [];
+let toasts: Array<{
+	message: string;
+	options: { action: { onClick: () => void } };
+}> = [];
 let replacedUrls: string[] = [];
 let createdBills: Array<Record<string, unknown>> = [];
 let searchParams = `id=${billId}`;
@@ -27,18 +33,30 @@ mock.module("next/navigation", () => ({
 
 mock.module("@/hooks/use-pos", () => ({
 	usePos: () => ({ bills }),
+	usePosClosedBills: () => closedBills,
 }));
 
 mock.module("@/hooks/use-bill", () => ({
 	useBill: () => ({
 		deleteBill: (id: string) => {
 			deletedBillIds.push(id);
+			return { billId: id, rateIds: [], paymentId: null };
+		},
+		restoreBill: (deletedBill: Record<string, unknown>) => {
+			restoredBills.push(deletedBill);
 		},
 		createBill: (params: Record<string, unknown>) => {
 			createdBills.push(params);
 			return { id: "bill-created" };
 		},
 	}),
+}));
+
+mock.module("sonner", () => ({
+	toast: (message: string, options: { action: { onClick: () => void } }) => {
+		toasts.push({ message, options });
+		return 1;
+	},
 }));
 
 mock.module("@/hooks/use-global-dialog", () => ({
@@ -82,9 +100,12 @@ const clickDeleteBill = async (index = 0) => {
 
 beforeEach(() => {
 	bills = {};
+	closedBills = [];
 	confirmCalls = [];
 	confirmAnswer = true;
 	deletedBillIds = [];
+	restoredBills = [];
+	toasts = [];
 	replacedUrls = [];
 	createdBills = [];
 	searchParams = `id=${billId}`;
@@ -243,5 +264,53 @@ describe("PosBillTabs", () => {
 		render(<PosBillTabs defaultCurrency={Currency.CZK} />);
 
 		expect(screen.queryAllByRole("tab")).toHaveLength(0);
+	});
+
+	it("offers to take a deletion back and restores the bill when asked", async () => {
+		bills = { [billId]: testBill({ itemCount: 0, tableLabel: "Stůl 1" }) };
+		render(<PosBillTabs defaultCurrency={Currency.CZK} />);
+
+		await clickDeleteBill();
+
+		expect(toasts).toHaveLength(1);
+		expect(toasts[0].message).toBe("pos:tabs.deleted");
+		toasts[0].options.action.onClick();
+		expect(restoredBills).toEqual([{ billId, rateIds: [], paymentId: null }]);
+	});
+
+	it("lists the paid bills with a way to the bill and to its payment", () => {
+		closedBills = [
+			{
+				id: "closed-1",
+				displayId: 3,
+				label: null,
+				tableLabel: "Stůl 2",
+				currency: Currency.CZK,
+				totalAmount: 25000,
+				paymentId: "pay-9",
+				closedAt: Date.now(),
+			} as unknown as PosClosedBill,
+		];
+		render(<PosBillTabs defaultCurrency={Currency.CZK} />);
+
+		fireEvent.click(screen.getByRole("button", { name: "pos:closed.open" }));
+
+		const dialog = screen.getByRole("dialog");
+		expect(dialog).toHaveTextContent("Stůl 2");
+		expect(dialog).toHaveTextContent("250.00");
+		expect(
+			screen.getByRole("button", { name: "pos:closed.payment" }),
+		).toHaveAttribute("href", "/admin/payments/detail?id=pay-9");
+		expect(
+			screen.getByRole("button", { name: "pos:closed.bill" }),
+		).toHaveAttribute("href", "/admin/payments/bills/detail?id=closed-1");
+	});
+
+	it("says so when no bill has been paid yet", () => {
+		render(<PosBillTabs defaultCurrency={Currency.CZK} />);
+
+		fireEvent.click(screen.getByRole("button", { name: "pos:closed.open" }));
+
+		expect(screen.getByRole("dialog")).toHaveTextContent("pos:closed.empty");
 	});
 });

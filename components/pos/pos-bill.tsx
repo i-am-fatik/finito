@@ -1,14 +1,8 @@
 "use client";
 
-import {
-	createId,
-	createRandomBytes,
-	type KyselyNotNull,
-	sqliteTrue,
-} from "@evolu/common";
+import { type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import { useDebounce } from "@uidotdev/usehooks";
 import { AnimatePresence, motion } from "framer-motion";
-import { useAtomValue } from "jotai";
 import {
 	FullscreenIcon,
 	Loader2,
@@ -29,10 +23,9 @@ import {
 	useTransition,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 import { z } from "zod";
-import { accountAtom } from "@/atoms/account";
 import { ComboboxDefault } from "@/components/combobox/default";
+import { PosCharge } from "@/components/pos/pos-charge";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -53,22 +46,20 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useAsyncRoutePush } from "@/hooks/use-async-route-push";
 import { useBill } from "@/hooks/use-bill";
-import { useEvolu } from "@/hooks/use-evolu";
+import { useChargeBill } from "@/hooks/use-charge-bill";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useNostr } from "@/hooks/use-nostr";
 import { type Pos, usePos } from "@/hooks/use-pos";
 import { createQuery } from "@/lib/evolu";
 import type { Id } from "@/lib/evolu/types";
 import { currencyConverter } from "@/lib/integrations/currency-converter/currency-converter";
-import { createPaymentWithDefaultMethods } from "@/lib/payment/service";
+import { createPaymentItemFromBillLine } from "@/lib/pos/charge";
 import {
 	Currency,
 	Integer,
 	type NonEmptyString255,
 	NonEmptyString255Schema,
-	type NonNegativeInteger,
 	StringToNullableStringSchema,
 } from "@/lib/shared/types";
 import { cn } from "@/lib/shared/ui/cn";
@@ -161,86 +152,8 @@ const calculateBillTotals = (props: {
 	};
 };
 
-const createPaymentItemFromPosItem = (
-	item: PosBillItem,
-	quantity?: number,
-) => ({
-	...item,
-	quantity: quantity ?? item.quantity,
-	totalAmount: Integer(
-		Math.round(item.item.price * (quantity ?? item.quantity)),
-	),
-	optionalityChecked: null,
-});
-
-const createPosPayment = async (props: {
-	evolu: ReturnType<typeof useEvolu>;
-	ndk: ReturnType<typeof useNostr>["ndk"];
-	deviceId: Id;
-	currency: Currency;
-	total: Integer;
-	items: ReturnType<typeof createPaymentItemFromPosItem>[];
-}) => {
-	const amountInBtc =
-		props.currency === Currency.BTC
-			? (props.total as NonNegativeInteger)
-			: (((await currencyConverter.convert({
-					amount: props.total,
-					sourceCurrency: props.currency,
-					targetCurrency: Currency.BTC,
-				})) as NonNegativeInteger | null) ?? undefined);
-
-	return createPaymentWithDefaultMethods({
-		evolu: props.evolu,
-		ndk: props.ndk,
-	})({
-		payment: {
-			id: createId({
-				randomBytes: createRandomBytes(),
-			}),
-			deviceId: props.deviceId,
-			currency: props.currency,
-		},
-		items: props.items,
-		tipAmount: null,
-		amountInBtc,
-	});
-};
-
 const getBillTargetLabel = (bill: Pos["bills"][Id]) =>
 	bill.table?.label ?? bill.label ?? `#${bill.displayId}`;
-
-const posBillHref = (billId: Id) =>
-	`/admin/pos?id=${encodeURIComponent(billId)}`;
-
-const useSettlePaidBill = () => {
-	const { t } = useTranslation();
-	const evolu = useEvolu();
-	const router = useRouter();
-	const { deleteBill, restoreBill } = useBill();
-
-	return (props: { billId: Id; paymentId: Id; label: string }) => {
-		const closedBill = deleteBill(props.billId);
-		if (closedBill === null) {
-			return;
-		}
-
-		toast(t("pos:bill.paid", { label: props.label }), {
-			duration: 15000,
-			action: {
-				label: t("pos:bill.undoPayment"),
-				onClick: () => {
-					restoreBill(closedBill);
-					evolu.update("payment", {
-						id: props.paymentId,
-						isDeleted: sqliteTrue,
-					});
-					router.push(posBillHref(props.billId) as never);
-				},
-			},
-		});
-	};
-};
 
 const Item: React.FC<{
 	item: PosBillItem;
@@ -564,12 +477,8 @@ const PayButton: FC<{
 	total: Integer;
 }> = (props) => {
 	const { t } = useTranslation();
-	const { ndk } = useNostr();
-	const evolu = useEvolu();
 	const [isSaving, startTransition] = useTransition();
-	const settlePaidBill = useSettlePaidBill();
-	const asyncRoutePush = useAsyncRoutePush();
-	const account = useAtomValue(accountAtom);
+	const { charge } = useChargeBill();
 
 	return (
 		<Button
@@ -577,25 +486,13 @@ const PayButton: FC<{
 			disabled={props.bill.items.length === 0 || isSaving}
 			onClick={() => {
 				startTransition(async () => {
-					const id = await createPosPayment({
-						evolu,
-						ndk,
-						deviceId: account.device.id,
+					await charge({
+						billId: props.billId,
 						currency: props.bill.currency,
 						total: props.total,
-						items: props.bill.items.map((item) =>
-							createPaymentItemFromPosItem(item),
+						items: props.bill.items.map((line) =>
+							createPaymentItemFromBillLine(line),
 						),
-					});
-
-					asyncRoutePush(
-						`/admin/payments/detail?id=${encodeURIComponent(id)}&focus=true`,
-					).then(() => {
-						settlePaidBill({
-							billId: props.billId,
-							paymentId: id,
-							label: getBillTargetLabel(props.bill),
-						});
 					});
 				});
 			}}
@@ -627,12 +524,8 @@ export const PosBill: React.FC<{
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const pos = usePos();
-	const evolu = useEvolu();
-	const { ndk } = useNostr();
-	const asyncRoutePush = useAsyncRoutePush();
-	const account = useAtomValue(accountAtom);
 	const { moveItemsToBill, setBillCurrency, setBillRate } = useBill();
-	const settlePaidBill = useSettlePaidBill();
+	const { charge } = useChargeBill();
 	const billId = props.billId;
 	const variant = searchParams.get("variant");
 	const [isSplitMode, setIsSplitMode] = useState(false);
@@ -930,29 +823,17 @@ export const PosBill: React.FC<{
 		}
 
 		const paymentItems = selectedItems.map(({ item, quantity }) =>
-			createPaymentItemFromPosItem(item, quantity),
+			createPaymentItemFromBillLine(item, quantity),
 		);
 
 		startSplitTransition(async () => {
 			if (isFullSelection) {
 				resetSplitState();
-				const paymentId = await createPosPayment({
-					evolu,
-					ndk,
-					deviceId: account.device.id,
+				await charge({
+					billId,
 					currency: bill.currency,
 					total: selectedTotals.total,
 					items: paymentItems,
-				});
-
-				asyncRoutePush(
-					`/admin/payments/detail?id=${encodeURIComponent(paymentId)}&focus=true`,
-				).then(() => {
-					settlePaidBill({
-						billId,
-						paymentId,
-						label: getBillTargetLabel(bill),
-					});
 				});
 
 				return;
@@ -966,26 +847,33 @@ export const PosBill: React.FC<{
 			}
 
 			resetSplitState();
-			const paymentId = await createPosPayment({
-				evolu,
-				ndk,
-				deviceId: account.device.id,
+			const paymentId = await charge({
+				billId: targetBillId,
 				currency: bill.currency,
 				total: selectedTotals.total,
 				items: paymentItems,
 			});
-
-			asyncRoutePush(
-				`/admin/payments/detail?id=${encodeURIComponent(paymentId)}&focus=true`,
-			).then(() => {
-				settlePaidBill({
-					billId: targetBillId,
-					paymentId,
-					label: getBillTargetLabel(bill),
-				});
-			});
+			if (paymentId !== undefined) {
+				router.replace(getPosBillHref(targetBillId) as never);
+			}
 		});
 	};
+
+	if (props.bill !== undefined && props.bill.paymentId !== null) {
+		return (
+			<div className="space-y-4" ref={props.ref}>
+				<ResponsiveCard className="flex flex-col w-full md:w-sm lg:w-md">
+					<CardContent className="flex-1 flex flex-col">
+						<PosCharge
+							bill={props.bill}
+							paymentId={props.bill.paymentId}
+							label={getBillTargetLabel(props.bill)}
+						/>
+					</CardContent>
+				</ResponsiveCard>
+			</div>
+		);
+	}
 
 	return (
 		<>

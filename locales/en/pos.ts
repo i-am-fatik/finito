@@ -5,7 +5,31 @@ const locale = {
     "noItemsInCart": "No items in cart",
     "pay": "Pay",
     "paid": "Bill {{label}} paid",
-    "undoPayment": "Undo",
+    "charge": {
+      "back": "Back to bill",
+      "cash": "Paid in cash",
+      "cashOnly": "The customer pays in cash. Confirm it below once the money is in the till.",
+      "failed": "The payment could not be prepared, try again",
+      "fullscreen": "Fullscreen",
+      "missing": "The payment for this bill no longer exists.",
+      "noCodes": "No payment method is set up. Set one up in the Payments section.",
+      "retry": "Issue a new QR code",
+      "codes": {
+        "bank": "Bank QR",
+        "lightning": "Lightning",
+        "web": "Web"
+      },
+      "explain": {
+        "expired": "The QR code expired. Issue a new one or go back to the bill.",
+        "stopped": "The payment is no longer watched. Issue a new QR code or go back to the bill."
+      },
+      "state": {
+        "awaiting": "Waiting for payment",
+        "expired": "Expired",
+        "paid": "Paid",
+        "stopped": "Stopped"
+      }
+    },
     "rate": "Rate ({{unit}} per 1 {{billUnit}}):",
     "selectTable": "Select a table",
     "split": {
@@ -32,6 +56,13 @@ const locale = {
     "totalPerCurrency": "Total ({{currency}}):",
     "total": "Total:"
   },
+  "closed": {
+    "bill": "Bill",
+    "empty": "No paid bill yet.",
+    "open": "Paid bills",
+    "payment": "Payment",
+    "title": "Paid bills"
+  },
   "items": {
     "newProduct": "New product",
     "searchItems": "Search items...",
@@ -49,7 +80,9 @@ const locale = {
       "description": "Bill {{label}} still has items, they will be lost.",
       "title": "Delete bill?"
     },
-    "newBill": "New bill"
+    "deleted": "Bill {{label}} deleted",
+    "newBill": "New bill",
+    "undoDelete": "Undo"
   }
 } as const;
 

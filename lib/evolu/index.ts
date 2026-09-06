@@ -224,6 +224,8 @@ export const AppSchema = {
 		label: NonEmptyString255Schema.nullable(),
 		currency: z.enum(Currency),
 		tableId: NullableTableIdSchema,
+		paymentId: NullableTableIdSchema,
+		closedAt: TimestampMsSchema.nullable(),
 	},
 	posBillItemLine: {
 		id: TableIdSchema,
@@ -356,6 +358,7 @@ export const AppSchema = {
 				"syncNwcTransfersProcess",
 				"syncBridgeTransfersProcess",
 				"adminPaymentsDetail",
+				"posBillCharge",
 			])
 			.nullable(),
 	},

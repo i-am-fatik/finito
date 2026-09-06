@@ -5,7 +5,31 @@ const locale = {
     "noItemsInCart": "Žádné položky v košíku",
     "pay": "Zaplatit",
     "paid": "Účet {{label}} zaplacen",
-    "undoPayment": "Vrátit",
+    "charge": {
+      "back": "Zpět k účtu",
+      "cash": "Zaplaceno hotově",
+      "cashOnly": "Zákazník platí hotově. Až peníze přijmete, potvrďte to tlačítkem níže.",
+      "failed": "Platbu se nepodařilo připravit, zkuste to znovu",
+      "fullscreen": "Na celou obrazovku",
+      "missing": "Platba k tomuto účtu už neexistuje.",
+      "noCodes": "Není nastavená žádná platební metoda. Nastavte ji v sekci Platby.",
+      "retry": "Vystavit nový QR kód",
+      "codes": {
+        "bank": "QR platba",
+        "lightning": "Lightning",
+        "web": "Web"
+      },
+      "explain": {
+        "expired": "Platnost QR kódu vypršela. Vystavte nový, nebo se vraťte k účtu.",
+        "stopped": "Platba se přestala sledovat. Vystavte nový QR kód, nebo se vraťte k účtu."
+      },
+      "state": {
+        "awaiting": "Čeká na zaplacení",
+        "expired": "Vypršelo",
+        "paid": "Zaplaceno",
+        "stopped": "Zastaveno"
+      }
+    },
     "rate": "Kurz ({{unit}} za 1 {{billUnit}}):",
     "selectTable": "Vyberte stůl",
     "split": {
@@ -32,6 +56,13 @@ const locale = {
     "totalPerCurrency": "Celkem ({{currency}}):",
     "total": "Celkový:"
   },
+  "closed": {
+    "bill": "Účet",
+    "empty": "Zatím žádný zaplacený účet.",
+    "open": "Zaplacené",
+    "payment": "Platba",
+    "title": "Zaplacené účty"
+  },
   "items": {
     "newProduct": "Nový produkt",
     "searchItems": "Hledat položky...",
@@ -49,7 +80,9 @@ const locale = {
       "description": "Účet {{label}} obsahuje položky, které se smazáním ztratí.",
       "title": "Smazat účet?"
     },
-    "newBill": "Nový účet"
+    "deleted": "Účet {{label}} smazán",
+    "newBill": "Nový účet",
+    "undoDelete": "Vrátit"
   }
 } as const;
 

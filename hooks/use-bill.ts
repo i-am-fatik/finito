@@ -2,7 +2,12 @@ import { createIdFromString, sqliteFalse, sqliteTrue } from "@evolu/common";
 import { useAtomValue } from "jotai";
 import { accountAtom } from "@/atoms/account";
 import { useEvolu } from "@/hooks/use-evolu";
-import { type PosBill, usePosRows } from "@/hooks/use-pos";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import {
+	type PosBill,
+	posBillLastDisplayIdQuery,
+	usePosRows,
+} from "@/hooks/use-pos";
 import type { EvoluSchemaType } from "@/lib/evolu";
 import type { Id } from "@/lib/evolu/types";
 import { createItem } from "@/lib/item/service";
@@ -12,22 +17,23 @@ import {
 	type NonEmptyString255,
 	PositiveInteger,
 	PositiveNumber,
+	TimestampMs,
 } from "@/lib/shared/types";
 
-export type ClosedBill = {
+export type DeletedBill = {
 	billId: Id;
 	rateIds: ReadonlyArray<Id>;
+	paymentId: Id | null;
 };
 
 export const useBill = () => {
 	const account = useAtomValue(accountAtom);
 	const evolu = useEvolu();
 	const { billRows } = usePosRows();
+	const { data: displayIdRows } = useEvoluQuery(posBillLastDisplayIdQuery);
 
 	const getNextDisplayId = () =>
-		PositiveInteger(
-			billRows.reduce((max, bill) => Math.max(max, bill.displayId), 0) + 1,
-		);
+		PositiveInteger((displayIdRows[0]?.lastDisplayId ?? 0) + 1);
 
 	const createBillInternal = (defaultCurrency: Currency) => {
 		const data = {
@@ -36,6 +42,8 @@ export const useBill = () => {
 			label: null,
 			currency: defaultCurrency,
 			tableId: null,
+			paymentId: null,
+			closedAt: null,
 		};
 		const { id } = evolu.insert("posBill", data);
 
@@ -92,7 +100,7 @@ export const useBill = () => {
 	};
 
 	return {
-		deleteBill: (billId: Id): ClosedBill | null => {
+		deleteBill: (billId: Id): DeletedBill | null => {
 			const bill = billRows.find((bill) => bill.id === billId);
 			if (bill === undefined) {
 				return null;
@@ -110,20 +118,66 @@ export const useBill = () => {
 				});
 			}
 
-			return { billId, rateIds: bill.rates.map((rate) => rate.id) };
+			if (bill.paymentId !== null) {
+				evolu.update("payment", {
+					id: bill.paymentId,
+					isDeleted: sqliteTrue,
+				});
+			}
+
+			return {
+				billId,
+				rateIds: bill.rates.map((rate) => rate.id),
+				paymentId: bill.paymentId,
+			};
 		},
-		restoreBill: (closedBill: ClosedBill) => {
+		restoreBill: (deletedBill: DeletedBill) => {
 			evolu.update("posBill", {
-				id: closedBill.billId,
+				id: deletedBill.billId,
 				isDeleted: sqliteFalse,
 			});
 
-			for (const rateId of closedBill.rateIds) {
+			for (const rateId of deletedBill.rateIds) {
 				evolu.update("posBillRate", {
 					id: rateId,
 					isDeleted: sqliteFalse,
 				});
 			}
+
+			if (deletedBill.paymentId !== null) {
+				evolu.update("payment", {
+					id: deletedBill.paymentId,
+					isDeleted: sqliteFalse,
+				});
+			}
+		},
+		chargeBill: (props: { billId: Id; paymentId: Id }) => {
+			evolu.update("posBill", {
+				id: props.billId,
+				paymentId: props.paymentId,
+			});
+		},
+		dropPayment: (props: { paymentId: Id }) => {
+			evolu.update("payment", {
+				id: props.paymentId,
+				isDeleted: sqliteTrue,
+			});
+		},
+		cancelCharge: (props: { billId: Id; paymentId: Id }) => {
+			evolu.update("payment", {
+				id: props.paymentId,
+				isDeleted: sqliteTrue,
+			});
+			evolu.update("posBill", {
+				id: props.billId,
+				paymentId: null,
+			});
+		},
+		closeBill: (props: { billId: Id }) => {
+			evolu.update("posBill", {
+				id: props.billId,
+				closedAt: TimestampMs(Date.now()),
+			});
 		},
 		createBill: (props: {
 			defaultCurrency: Currency;
@@ -187,7 +241,7 @@ export const useBill = () => {
 						...createBillInternal(props.defaultCurrency),
 						items: [],
 					};
-			if (bill === undefined) {
+			if (bill === undefined || bill.paymentId !== null) {
 				return;
 			}
 
@@ -269,7 +323,8 @@ export const useBill = () => {
 			if (
 				targetBill !== undefined &&
 				(targetBill.id === sourceBill.id ||
-					targetBill.currency !== sourceBill.currency)
+					targetBill.currency !== sourceBill.currency ||
+					targetBill.paymentId !== null)
 			) {
 				return;
 			}

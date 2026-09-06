@@ -6,8 +6,10 @@ import { PosBillTabs } from "@/components/pos/pos-bill-tabs";
 import { PosItems } from "@/components/pos/pos-items";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { usePos } from "@/hooks/use-pos";
+import { useSettlePaidBills } from "@/hooks/use-settle-paid-bills";
 import type { Id } from "@/lib/evolu/types";
 import type { Currency } from "@/lib/shared/types";
+import { cn } from "@/lib/shared/ui/cn";
 
 export const POS: FC<{
 	defaultCurrency: Currency;
@@ -15,7 +17,9 @@ export const POS: FC<{
 	const searchParams = useSearchParams();
 	const id = searchParams.get("id") as Id | null;
 	const pos = usePos();
+	useSettlePaidBills();
 	const bill = id !== null ? (pos.bills[id] ?? undefined) : undefined;
+	const isCharging = bill !== undefined && bill.paymentId !== null;
 	const [flyingButtons, setFlyingButtons] = useState<
 		Array<{ id: number; x: number; y: number }>
 	>([]);
@@ -89,12 +93,20 @@ export const POS: FC<{
 					})}
 				</AnimatePresence>
 
-				<PosItems
-					bill={bill}
-					billId={id ?? undefined}
-					onItemClick={handleButtonClick}
-					defaultCurrency={props.defaultCurrency}
-				/>
+				<div
+					className={cn(
+						"flex w-full min-w-0",
+						isCharging && "pointer-events-none opacity-50",
+					)}
+					aria-disabled={isCharging}
+				>
+					<PosItems
+						bill={bill}
+						billId={id ?? undefined}
+						onItemClick={handleButtonClick}
+						defaultCurrency={props.defaultCurrency}
+					/>
+				</div>
 				<PosBill
 					ref={counterRef}
 					key={id ?? ""}
