@@ -7,6 +7,10 @@ import { useEvolu } from "@/hooks/use-evolu";
 import { useNostr } from "@/hooks/use-nostr";
 import type { Id } from "@/lib/evolu/types";
 import { currencyConverter } from "@/lib/integrations/currency-converter/currency-converter";
+import {
+	describeGatewayProblem,
+	GatewayProblemKind,
+} from "@/lib/payment/gateway";
 import { createPaymentWithDefaultMethods } from "@/lib/payment/service";
 import { type ChargeParams, createBillCharger } from "@/lib/pos/charge";
 import { Currency } from "@/lib/shared/types";
@@ -29,10 +33,29 @@ export const useChargeBill = () => {
 		linkPayment: chargeBill,
 		dropPayment: dropPayment,
 	});
+	const describeFailure = (error: unknown) => {
+		const problem = describeGatewayProblem(error);
+
+		if (problem.kind === GatewayProblemKind.Unauthorized) {
+			return t("pos:bill.charge.failure.unauthorized");
+		}
+		if (problem.kind === GatewayProblemKind.Unreachable) {
+			return t("pos:bill.charge.failure.unreachable");
+		}
+		if (problem.kind === GatewayProblemKind.NoWallet) {
+			return t("pos:bill.charge.failure.noWallet");
+		}
+		if (problem.kind === GatewayProblemKind.Refused) {
+			return t("pos:bill.charge.failure.refused", { status: problem.status });
+		}
+
+		return t("pos:bill.charge.failed");
+	};
+
 	const reported = (minting: Promise<Id>) =>
 		minting.catch((error: unknown) => {
 			console.error(error);
-			toast.error(t("pos:bill.charge.failed"));
+			toast.error(describeFailure(error));
 
 			return undefined;
 		});

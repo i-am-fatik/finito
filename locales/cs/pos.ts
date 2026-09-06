@@ -10,6 +10,12 @@ const locale = {
       "cash": "Zaplaceno hotově",
       "cashOnly": "Zákazník platí hotově. Až peníze přijmete, potvrďte to tlačítkem níže.",
       "failed": "Platbu se nepodařilo připravit, zkuste to znovu",
+      "failure": {
+        "unauthorized": "Brána odmítla token účtu. Opravte ho v Účtech, opakovat nemá smysl.",
+        "unreachable": "Bránu se nepodařilo kontaktovat. Zkontrolujte připojení a URL v Účtech.",
+        "noWallet": "Brána nenašla peněženku, která by tuto částku přijala.",
+        "refused": "Brána platbu odmítla ({{status}}). Opakovat nemá smysl."
+      },
       "fullscreen": "Na celou obrazovku",
       "missing": "Platba k tomuto účtu už neexistuje.",
       "noCodes": "Není nastavená žádná platební metoda. Nastavte ji v sekci Platby.",

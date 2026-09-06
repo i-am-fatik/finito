@@ -4,6 +4,7 @@ import { type UseFormReturn, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 import type { AutoFormBaseSchema } from "@/components/auto-form";
+import { readUserFacingMessage } from "@/lib/shared/errors";
 
 export type UseActionFormResult<S extends AutoFormBaseSchema> = {
 	$schema: S;
@@ -55,7 +56,10 @@ export const useActionForm = <Schema extends AutoFormBaseSchema>(
 				await props.saveAction(values.transformedValues, values.originalValues);
 			} catch (error) {
 				console.error(error, error instanceof Error ? error.cause : undefined);
-				toast("Something bad happened while saving.");
+				toast.error(
+					readUserFacingMessage(error) ??
+						"Something bad happened while saving.",
+				);
 				return;
 			}
 

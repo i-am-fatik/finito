@@ -10,6 +10,12 @@ const locale = {
       "cash": "Paid in cash",
       "cashOnly": "The customer pays in cash. Confirm it below once the money is in the till.",
       "failed": "The payment could not be prepared, try again",
+      "failure": {
+        "unauthorized": "The gateway refused the account's token. Fix it in Accounts, retrying will not help.",
+        "unreachable": "The gateway could not be reached. Check the connection and the URL in Accounts.",
+        "noWallet": "The gateway found no wallet that would take this amount.",
+        "refused": "The gateway refused the payment ({{status}}). Retrying will not help."
+      },
       "fullscreen": "Fullscreen",
       "missing": "The payment for this bill no longer exists.",
       "noCodes": "No payment method is set up. Set one up in the Payments section.",
