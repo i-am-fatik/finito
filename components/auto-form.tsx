@@ -1363,20 +1363,22 @@ const createBuilder = <
 						onDragEnd={handleDragEnd}
 					>
 						{isMobile ? (
-							<div className="flex flex-col gap-4">
-								{fields.map((field, index) => (
-									<RowComponent
-										key={index.toString()}
-										index={index}
-										name={props.name}
-										control={props.control}
-										remove={remove}
-										move={move}
-										field={field}
-										columns={options.columns}
-									/>
-								))}
-							</div>
+							<Table>
+								<TableBody className="flex flex-col gap-4">
+									{fields.map((field, index) => (
+										<RowComponent
+											key={index.toString()}
+											index={index}
+											name={props.name}
+											control={props.control}
+											remove={remove}
+											move={move}
+											field={field}
+											columns={options.columns}
+										/>
+									))}
+								</TableBody>
+							</Table>
 						) : (
 							<Table>
 								<TableHeader>

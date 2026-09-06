@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { FC } from "react";
 import { type Control, useForm } from "react-hook-form";
-import { AutoFormInput } from "@/components/auto-form";
+import { z } from "zod";
+import { AutoFormInput, createAutoFormLayout } from "@/components/auto-form";
 
 const approvalStatuses = {
 	pending: "Čeká na potvrzení",
@@ -69,5 +70,48 @@ describe("AutoFormInput.select", () => {
 
 		expect(triggerText()).toContain("Bez stavu");
 		expect(triggerText()).not.toContain("_");
+	});
+});
+
+describe("arrayTableField in a narrow window", () => {
+	const renderRates = () => {
+		const schema = z.object({
+			rates: z.object({ name: z.string() }).array(),
+		});
+		const components = createAutoFormLayout(schema, ({ builder }) => ({
+			...builder.arrayTableField(
+				{
+					name: "rates",
+					defaultValue: () => ({ name: "" }),
+					columns: [{ title: "Název" }],
+				},
+				({ builder: rowBuilder }) => ({
+					...rowBuilder.magicInput("name").text({}),
+				}),
+			),
+		}));
+		const RatesField = components.rates as unknown as FC<{
+			name: string;
+			control: Control;
+		}>;
+
+		const Harness = () => {
+			const form = useForm({ defaultValues: { rates: [{ name: "DPH" }] } });
+
+			return <RatesField name="rates" control={form.control as never} />;
+		};
+
+		return render(<Harness />).container;
+	};
+
+	it("keeps every row inside a table body, never loose in a div", () => {
+		const container = renderRates();
+
+		const rows = [...container.querySelectorAll("tr")];
+
+		expect(rows.length).toBeGreaterThan(0);
+		expect(rows.map((row) => row.parentElement?.tagName)).toEqual(
+			rows.map(() => "TBODY"),
+		);
 	});
 });
