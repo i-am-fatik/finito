@@ -26,6 +26,7 @@ const locale = {
   },
   "dashboard": {
     "applicationInformation": "Informace o aplikaci",
+    "consoleErrors": "Chyby konzole",
     "home": {
       "subtitle": "Decentralizovaná platební platforma a pokladní systém",
       "status": {
@@ -77,6 +78,12 @@ const locale = {
     "application": {
       "version": "Verze",
       "unknown": "neznámé"
+    },
+    "errors": {
+      "empty": "Zatím žádná chyba. Na tomto zařízení se sbírají chyby konzole, neodchycené výjimky, nenačtené soubory a chyby Evolu.",
+      "copy": "Kopírovat",
+      "clear": "Vymazat",
+      "repeated": "{{times}}×"
     },
     "common": {
       "download": "Stáhnout",

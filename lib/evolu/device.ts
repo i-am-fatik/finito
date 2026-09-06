@@ -9,6 +9,7 @@ import {
 } from "@evolu/common";
 import { createRun } from "@evolu/web";
 import { z } from "zod";
+import { watchEvoluErrors } from "@/lib/diagnostics/collector";
 import { createFinitoEvoluDeps } from "@/lib/evolu/deps";
 import { TableIdSchema } from "@/lib/evolu/types";
 import {
@@ -68,7 +69,9 @@ const DeviceSchema = {
 export const createDeviceQuery = createQueryBuilder(DeviceSchema);
 
 export const createDeviceEvolu = async () => {
-	const run = createRun(createFinitoEvoluDeps());
+	const deps = createFinitoEvoluDeps();
+	watchEvoluErrors(deps.evoluError);
+	const run = createRun(deps);
 	const evolu = getOrThrow(
 		await createEvolu(DeviceSchema, {
 			appName: AppName.orThrow("FinitoDevice"),
@@ -88,15 +91,6 @@ export const createDeviceEvolu = async () => {
 	// (async () => {
 	// 	console.log("deviceAppOwner", await evolu.appOwner);
 	// })();
-	//
-	// evolu.subscribeError(() => {
-	// 	const error = evolu.getError();
-	// 	if (!error) return;
-	//
-	// 	alert("🚨 Evolu error occurred! Check the console.");
-	// 	// eslint-disable-next-line no-console
-	// 	console.error(error);
-	// });
 
 	return evolu;
 };

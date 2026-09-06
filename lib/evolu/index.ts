@@ -14,6 +14,7 @@ import {
 } from "@evolu/common";
 import { createRun } from "@evolu/web";
 import { z } from "zod";
+import { watchEvoluErrors } from "@/lib/diagnostics/collector";
 import { createFinitoEvoluDeps } from "@/lib/evolu/deps";
 import { AiAgentScope } from "@/lib/evolu/model/ai-agent";
 import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
@@ -750,7 +751,9 @@ export const createAppEvolu = async (props: {
 	mnemonic: Mnemonic;
 	transports: ReadonlyArray<OwnerTransport>;
 }) => {
-	const run = createRun(createFinitoEvoluDeps());
+	const deps = createFinitoEvoluDeps();
+	watchEvoluErrors(deps.evoluError);
+	const run = createRun(deps);
 	const evolu = getOrThrow(
 		await createEvolu(AppSchema, {
 			appName: AppName.orThrow(`Finito${createIdFromString(props.mnemonic)}`),
@@ -867,15 +870,6 @@ export const createAppEvolu = async (props: {
 	// 	const history = await evolu.loadQuery(historyQuery);
 	// 	console.log("history", history);
 	// })();
-
-	// evolu.subscribeError(() => {
-	// 	const error = evolu.getError();
-	// 	if (!error) return;
-	//
-	// 	alert("🚨 Evolu error occurred! Check the console.");
-	// 	// eslint-disable-next-line no-console
-	// 	console.error(error);
-	// });
 
 	return evolu;
 };

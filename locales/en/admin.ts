@@ -26,6 +26,7 @@ const locale = {
   },
   "dashboard": {
     "applicationInformation": "Application information",
+    "consoleErrors": "Console errors",
     "home": {
       "subtitle": "Decentralized payment platform and point of sale system",
       "status": {
@@ -77,6 +78,12 @@ const locale = {
     "application": {
       "version": "Version",
       "unknown": "unknown"
+    },
+    "errors": {
+      "empty": "No errors yet. Console errors, unhandled exceptions, failed loads and Evolu errors are collected on this device.",
+      "copy": "Copy",
+      "clear": "Clear",
+      "repeated": "{{times}}×"
     },
     "common": {
       "download": "Download",

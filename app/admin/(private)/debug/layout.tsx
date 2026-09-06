@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	BugIcon,
 	HardDriveDownloadIcon,
 	HistoryIcon,
 	InfoIcon,
@@ -15,7 +16,7 @@ import {
 } from "@/components/sub-nav-shell";
 import { useNostr } from "@/hooks/use-nostr";
 
-type DebugTab = "application" | "storage" | "generator" | "nostr";
+type DebugTab = "application" | "storage" | "generator" | "errors" | "nostr";
 
 const debugTabs = [
 	{
@@ -35,6 +36,12 @@ const debugTabs = [
 		labelKey: "admin:dashboard.randomDataGenerator",
 		icon: RefreshCcwIcon,
 		nextUrl: "/admin/debug/generator" as Route,
+	},
+	{
+		value: "errors",
+		labelKey: "admin:dashboard.consoleErrors",
+		icon: BugIcon,
+		nextUrl: "/admin/debug/errors" as Route,
 	},
 ] satisfies readonly DetailShellTab<DebugTab>[];
 
