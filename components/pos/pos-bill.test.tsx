@@ -114,6 +114,10 @@ mock.module("@/atoms/account", () => ({
 	accountAtom: atom({ device: { id: "device-1" } }),
 }));
 
+mock.module("@/lib/integrations/currency-converter/currency-converter", () => ({
+	currencyConverter: { convert: async () => null },
+}));
+
 const { PosBill } = await import("@/components/pos/pos-bill");
 
 const beer = {
@@ -132,6 +136,7 @@ const testBill = (params: {
 	id: string;
 	displayId: number;
 	itemLabel?: string;
+	itemCurrency?: Currency;
 	tableLabel?: string;
 	paymentId?: string;
 }) =>
@@ -155,7 +160,11 @@ const testBill = (params: {
 							id: `${params.id}-line`,
 							itemId: `${params.id}-item`,
 							quantity: 2,
-							item: { ...beer, label: params.itemLabel },
+							item: {
+								...beer,
+								label: params.itemLabel,
+								currency: params.itemCurrency ?? beer.currency,
+							},
 						},
 					],
 		rates: [],
@@ -305,6 +314,26 @@ describe("PosBill charging", () => {
 			],
 		});
 		expect(navigations).toEqual([]);
+	});
+
+	it("refuses to charge a bill holding an item in a currency it has no rate for", async () => {
+		const bill = testBill({
+			id: billId,
+			displayId: 7,
+			itemLabel: "Pivo",
+			itemCurrency: Currency.BTC,
+		});
+		bills = { [billId]: bill };
+		render(<PosBill billId={billId as never} bill={bill} />);
+
+		await waitFor(() =>
+			expect(
+				screen.getAllByText("pos:bill.rate-pending").length,
+			).toBeGreaterThan(0),
+		);
+		clickButton(/pos:bill\.pay/);
+
+		expect(chargeCalls).toEqual([]);
 	});
 
 	it("shows the payment in place of the lines while the bill is being charged", () => {

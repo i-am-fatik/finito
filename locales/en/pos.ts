@@ -31,6 +31,7 @@ const locale = {
       }
     },
     "rate": "Rate ({{unit}} per 1 {{billUnit}}):",
+    "rate-pending": "waiting for the rate",
     "selectTable": "Select a table",
     "split": {
       "cancel": "Cancel",

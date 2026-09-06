@@ -130,20 +130,29 @@ const calculateBillTotals = (props: {
 		);
 	}
 
-	const total = Integer(
-		[...totalPerCurrency.entries()].reduce((acc, [currency, value]) => {
-			const rate = props.rates.find((item) => item.currency === currency);
-
-			return (
-				convertMinorUnitsWithRate({
-					value,
-					sourceCurrency: currency,
-					targetCurrency: props.billCurrency,
-					rate: rate?.rate ?? 1,
-				}) + acc
-			);
-		}, 0),
+	const currencyWithoutRate = [...totalPerCurrency.keys()].find(
+		(currency) =>
+			currency !== props.billCurrency &&
+			!props.rates.some((rate) => rate.currency === currency),
 	);
+
+	const total =
+		currencyWithoutRate !== undefined
+			? null
+			: Integer(
+					[...totalPerCurrency.entries()].reduce((acc, [currency, value]) => {
+						const rate = props.rates.find((item) => item.currency === currency);
+
+						return (
+							convertMinorUnitsWithRate({
+								value,
+								sourceCurrency: currency,
+								targetCurrency: props.billCurrency,
+								rate: rate?.rate ?? 1,
+							}) + acc
+						);
+					}, 0),
+				);
 
 	return {
 		total,
@@ -474,22 +483,27 @@ const PosBillTable: React.FC<{
 const PayButton: FC<{
 	bill: Pos["bills"][Id];
 	billId: Id;
-	total: Integer;
+	total: Integer | null;
 }> = (props) => {
 	const { t } = useTranslation();
 	const [isSaving, startTransition] = useTransition();
 	const { charge } = useChargeBill();
+	const total = props.total;
 
 	return (
 		<Button
 			className="h-12 w-full text-lg"
-			disabled={props.bill.items.length === 0 || isSaving}
+			disabled={props.bill.items.length === 0 || isSaving || total === null}
 			onClick={() => {
+				if (total === null) {
+					return;
+				}
+
 				startTransition(async () => {
 					await charge({
 						billId: props.billId,
 						currency: props.bill.currency,
-						total: props.total,
+						total,
 						items: props.bill.items.map((line) =>
 							createPaymentItemFromBillLine(line),
 						),
@@ -503,11 +517,13 @@ const PayButton: FC<{
 				<>
 					{t("pos:bill.pay")}{" "}
 					<motion.span
-						key={props.total}
+						key={total}
 						initial={{ scale: 1.1, opacity: 0.5 }}
 						animate={{ scale: 1, opacity: 1 }}
 					>
-						{formatMoney({ value: props.total, currency: props.bill.currency })}
+						{total === null
+							? t("pos:bill.rate-pending")
+							: formatMoney({ value: total, currency: props.bill.currency })}
 					</motion.span>
 				</>
 			)}
@@ -818,7 +834,13 @@ export const PosBill: React.FC<{
 
 	const handlePaySelected = () => {
 		const bill = props.bill;
-		if (billId === undefined || bill === undefined || !hasSelectedItems) {
+		const selectedTotal = selectedTotals.total;
+		if (
+			billId === undefined ||
+			bill === undefined ||
+			!hasSelectedItems ||
+			selectedTotal === null
+		) {
 			return;
 		}
 
@@ -832,7 +854,7 @@ export const PosBill: React.FC<{
 				await charge({
 					billId,
 					currency: bill.currency,
-					total: selectedTotals.total,
+					total: selectedTotal,
 					items: paymentItems,
 				});
 
@@ -850,7 +872,7 @@ export const PosBill: React.FC<{
 			const paymentId = await charge({
 				billId: targetBillId,
 				currency: bill.currency,
-				total: selectedTotals.total,
+				total: selectedTotal,
 				items: paymentItems,
 			});
 			if (paymentId !== undefined) {
@@ -1045,10 +1067,12 @@ export const PosBill: React.FC<{
 												initial={{ scale: 1.1, opacity: 0.5 }}
 												animate={{ scale: 1, opacity: 1 }}
 											>
-												{formatMoney({
-													value: billTotals.total,
-													currency: props.bill.currency,
-												})}
+												{billTotals.total === null
+													? t("pos:bill.rate-pending")
+													: formatMoney({
+															value: billTotals.total,
+															currency: props.bill.currency,
+														})}
 											</motion.span>
 										</div>
 									</div>
@@ -1071,10 +1095,12 @@ export const PosBill: React.FC<{
 														{t("pos:bill.split.selectedTotal")}
 													</span>
 													<span className="font-medium">
-														{formatMoney({
-															value: selectedTotals.total,
-															currency: props.bill.currency,
-														})}
+														{selectedTotals.total === null
+															? t("pos:bill.rate-pending")
+															: formatMoney({
+																	value: selectedTotals.total,
+																	currency: props.bill.currency,
+																})}
 													</span>
 												</div>
 											</div>

@@ -31,6 +31,7 @@ const locale = {
       }
     },
     "rate": "Kurz ({{unit}} za 1 {{billUnit}}):",
+    "rate-pending": "čekám na kurz",
     "selectTable": "Vyberte stůl",
     "split": {
       "cancel": "Zrušit",
