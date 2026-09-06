@@ -21,6 +21,8 @@ export type BillDetail = {
 	label: string | null;
 	currency: Currency;
 	totalAmount: Integer;
+	paymentId: Id | null;
+	closedAt: number | null;
 	items: {
 		itemId: Id;
 		catalogItemId: Id | null;
@@ -53,6 +55,8 @@ export const createBillDetailQuery = (id: Id) =>
 						"posBill.displayId as displayId",
 						"posBill.label as label",
 						"posBill.currency as currency",
+						"posBill.paymentId as paymentId",
+						"posBill.closedAt as closedAt",
 						eb.fn
 							.coalesce(
 								eb.fn.sum<Integer>(

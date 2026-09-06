@@ -18,12 +18,14 @@ import {
 	type DataTableOnFilterChange,
 } from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
 import { createQuery } from "@/lib/evolu";
 import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import { BillStatus, resolveBillStatus } from "@/lib/pos/bill-status";
 import type { Currency, Integer, NonEmptyString255 } from "@/lib/shared/types";
 import { formatMoney } from "@/lib/shared/utils/format";
 
@@ -38,7 +40,15 @@ type Row = {
 	tableLabel: string | null;
 	totalAmount: Integer;
 	currency: Currency;
+	paymentId: Id | null;
+	closedAt: number | null;
 };
+
+const statusBadgeVariant = {
+	[BillStatus.Open]: "outline",
+	[BillStatus.Charging]: "secondary",
+	[BillStatus.Closed]: "default",
+} as const;
 
 const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 	{
@@ -99,6 +109,19 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 			}),
 	},
 	{
+		accessorKey: "closedAt",
+		header: createSortableHeader(t("bills:table.columns.status")),
+		cell: ({ row }) => {
+			const status = resolveBillStatus(row.original);
+
+			return (
+				<Badge variant={statusBadgeVariant[status]}>
+					{t(`bills:status.${status}`)}
+				</Badge>
+			);
+		},
+	},
+	{
 		accessorKey: "deviceName",
 		header: createSortableHeader(t("tables:table.columns.device-name")),
 		cell: ({ row }) =>
@@ -148,6 +171,8 @@ const sortingFields = {
 	tableLabel: "table.label",
 	totalAmount: "totalAmount",
 	currency: "posBill.currency",
+	paymentId: "posBill.paymentId",
+	closedAt: "posBill.closedAt",
 } as const satisfies Record<keyof Row, string>;
 
 export function BillsTable() {
@@ -192,6 +217,8 @@ export function BillsTable() {
 									"table.id as tableId",
 									"table.label as tableLabel",
 									"posBill.currency as currency",
+									"posBill.paymentId as paymentId",
+									"posBill.closedAt as closedAt",
 									eb.fn
 										.coalesce(
 											eb.fn.sum<Integer>(

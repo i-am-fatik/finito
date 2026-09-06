@@ -1,7 +1,7 @@
 const locale = {
 	"table": {
 		"description": {
-			"listOfBills": "Přehled otevřených účtů v pokladně",
+			"listOfBills": "Přehled účtů v pokladně",
 		},
 		"columns": {
 			"bill": "Účet",
@@ -9,7 +9,13 @@ const locale = {
 			"label": "Název",
 			"table": "Stůl",
 			"amount": "Částka",
+			"status": "Stav",
 		},
+	},
+	"status": {
+		"open": "Otevřený",
+		"charging": "Čeká na zaplacení",
+		"closed": "Zaplacený",
 	},
 	"detail": {
 		"tabs": {
@@ -28,6 +34,8 @@ const locale = {
 			"table": "Stůl",
 			"device": "Zařízení",
 			"createdAt": "Vytvořeno",
+			"status": "Stav",
+			"closedAt": "Zaplaceno",
 		},
 		"sections": {
 			"items": "Položky účtu",
@@ -35,6 +43,7 @@ const locale = {
 		},
 		"actions": {
 			"openInPos": "Otevřít v pokladně",
+			"openPayment": "Otevřít platbu",
 			"openTable": "Otevřít stůl",
 		},
 		"empty": {

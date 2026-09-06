@@ -1,7 +1,7 @@
 const locale = {
 	"table": {
 		"description": {
-			"listOfBills": "Overview of open point-of-sale bills",
+			"listOfBills": "Overview of point-of-sale bills",
 		},
 		"columns": {
 			"bill": "Bill",
@@ -9,7 +9,13 @@ const locale = {
 			"label": "Label",
 			"table": "Table",
 			"amount": "Amount",
+			"status": "Status",
 		},
+	},
+	"status": {
+		"open": "Open",
+		"charging": "Waiting for payment",
+		"closed": "Paid",
 	},
 	"detail": {
 		"tabs": {
@@ -28,6 +34,8 @@ const locale = {
 			"table": "Table",
 			"device": "Device",
 			"createdAt": "Created at",
+			"status": "Status",
+			"closedAt": "Paid at",
 		},
 		"sections": {
 			"items": "Bill items",
@@ -35,6 +43,7 @@ const locale = {
 		},
 		"actions": {
 			"openInPos": "Open in POS",
+			"openPayment": "Open payment",
 			"openTable": "Open table",
 		},
 		"empty": {

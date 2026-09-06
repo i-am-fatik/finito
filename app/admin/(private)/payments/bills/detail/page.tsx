@@ -20,6 +20,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { resolveBillStatus } from "@/lib/pos/bill-status";
 import { formatDateTime, formatMoney } from "@/lib/shared/utils/format";
 import { createBillDetailQuery } from "../bill-detail-query";
 
@@ -116,6 +117,18 @@ export default function Home() {
 												key: t("bills:detail.fields.createdAt"),
 												value: formatDateTime(new Date(bill.createdAt)),
 											},
+											{
+												key: t("bills:detail.fields.status"),
+												value: t(`bills:status.${resolveBillStatus(bill)}`),
+											},
+											...(bill.closedAt === null
+												? []
+												: [
+														{
+															key: t("bills:detail.fields.closedAt"),
+															value: formatDateTime(new Date(bill.closedAt)),
+														},
+													]),
 										]}
 									/>
 								</div>
@@ -219,19 +232,40 @@ export default function Home() {
 						<CardTitle>{t("common:table.actions")}</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-2">
-						<Button
-							variant="outline"
-							className="w-full"
-							nativeButton={false}
-							render={
-								<Link
-									href={`/admin/pos?id=${encodeURIComponent(bill.id)}` as never}
-								/>
-							}
-						>
-							<ExternalLink />
-							{t("bills:detail.actions.openInPos")}
-						</Button>
+						{bill.closedAt === null && (
+							<Button
+								variant="outline"
+								className="w-full"
+								nativeButton={false}
+								render={
+									<Link
+										href={
+											`/admin/pos?id=${encodeURIComponent(bill.id)}` as never
+										}
+									/>
+								}
+							>
+								<ExternalLink />
+								{t("bills:detail.actions.openInPos")}
+							</Button>
+						)}
+						{bill.paymentId && (
+							<Button
+								variant="outline"
+								className="w-full"
+								nativeButton={false}
+								render={
+									<Link
+										href={
+											`/admin/payments/detail?id=${encodeURIComponent(bill.paymentId)}` as never
+										}
+									/>
+								}
+							>
+								<ExternalLink />
+								{t("bills:detail.actions.openPayment")}
+							</Button>
+						)}
 						{bill.tableId && (
 							<Button
 								variant="outline"
