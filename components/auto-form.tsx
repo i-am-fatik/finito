@@ -611,6 +611,14 @@ export const AutoFormInput = {
 				});
 			}, []);
 
+			const valueLabels = useMemo(
+				() => ({
+					_: params.emptyTitle ?? <>&nbsp;</>,
+					...values,
+				}),
+				[values],
+			);
+
 			return (
 				<Controller
 					control={props.control}
@@ -645,6 +653,7 @@ export const AutoFormInput = {
 								) : (
 									<Select
 										{...field}
+										items={valueLabels}
 										value={field.value === null ? "_" : field.value}
 										onValueChange={(value) =>
 											field.onChange(value === "_" ? null : value)
