@@ -321,7 +321,20 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 			})
 			.listen({
 				createPaymentFromSubscribedBill: async (input) => {
-					const bill = findBillByQrCode(input.qrCodeId);
+					const subscription = subscriptionRef.get(input.subscriptionId);
+					const pubkey = input.pubkey ?? subscription?.pubkey;
+					const qrCodeId = input.qrCodeId ?? subscription?.qrCodeId;
+					if (pubkey === undefined || qrCodeId === undefined) {
+						return {
+							variant: "info",
+							payload: {
+								status: "failure",
+								text: NonEmptyString("The bill connection expired, reload it."),
+							},
+						};
+					}
+
+					const bill = findBillByQrCode(qrCodeId);
 					const created = await paymentFromSubscribedBill({
 						evolu: props.evolu,
 						deviceId,
@@ -350,8 +363,8 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 					if (bill !== undefined) {
 						pending.add(input.payment.paymentId, {
 							subscriptionId: input.subscriptionId,
-							pubkey: input.pubkey,
-							qrCodeId: input.qrCodeId,
+							pubkey,
+							qrCodeId,
 							billId: bill.id,
 							lines: created.lines,
 							expiresAt: created.expiresAt,
