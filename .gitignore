@@ -33,3 +33,6 @@ next-env.d.ts
 
 certificates
 e2e/.auth/
+
+# editors
+/.idea/
