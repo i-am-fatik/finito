@@ -507,7 +507,9 @@ describe("syncBridgeTransfersProcess", () => {
 		expect(writesTo(upserts, "transaction")).toHaveLength(0);
 		expect(updates).toHaveLength(0);
 		expect(reports.at(-1)?.type).toBe("error");
-		expect(reports.at(-1)?.description).toContain("Gateway unreachable");
+		expect(reports.at(-1)?.description).toBe(
+			"Gateway unreachable: Value must not be undefined",
+		);
 
 		jest.advanceTimersByTime(retryDelayMs);
 		await flushPendingWork();

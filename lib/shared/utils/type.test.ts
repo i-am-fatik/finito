@@ -22,11 +22,14 @@ describe("assertNotUndefined", () => {
 		expect(() => assertNotUndefined("")).not.toThrow();
 	});
 
-	it("lets undefined through, because it tests for null instead", () => {
-		expect(() => assertNotUndefined(undefined)).not.toThrow();
-		expect(() => assertNotUndefined(null)).toThrow(
+	it("rejects undefined", () => {
+		expect(() => assertNotUndefined(undefined)).toThrow(
 			"Value must not be undefined",
 		);
+	});
+
+	it("lets null through, which is what assertNotNull is for", () => {
+		expect(() => assertNotUndefined(null)).not.toThrow();
 	});
 });
 

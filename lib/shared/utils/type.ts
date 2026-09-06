@@ -9,7 +9,7 @@ export function assertNotNull<T>(
 export function assertNotUndefined<T>(
 	value: T,
 ): asserts value is T extends undefined ? never : T {
-	if (value === null) {
+	if (value === undefined) {
 		throw new TypeError("Value must not be undefined");
 	}
 }
