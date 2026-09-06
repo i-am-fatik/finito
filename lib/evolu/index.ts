@@ -15,6 +15,7 @@ import {
 import { createRun } from "@evolu/web";
 import { z } from "zod";
 import { createFinitoEvoluDeps } from "@/lib/evolu/deps";
+import { AiAgentScope } from "@/lib/evolu/model/ai-agent";
 import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import { PaymentMethod } from "@/lib/evolu/model/payment";
@@ -515,6 +516,18 @@ export const AppSchema = {
 		id: TableIdSchema,
 		googleApiKey: NonEmptyStringSchema.nullable(),
 	},
+	aiAgent: {
+		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
+		label: NonEmptyString255Schema,
+		tokenHash: NonEmptyStringSchema,
+		lastUsedAt: TimestampMsSchema.nullable(),
+	},
+	aiAgentScope: {
+		id: TableIdSchema,
+		aiAgentId: TableIdSchema,
+		scope: z.enum(AiAgentScope),
+	},
 	billingSettings: {
 		id: TableIdSchema,
 		ownContactId: TableIdSchema.nullable(),
@@ -827,6 +840,7 @@ export const createAppEvolu = async (props: {
 					create(`paymentLnBridge_paymentHash`)
 						.on(`paymentLnBridge`)
 						.column("paymentHash"),
+					create(`aiAgent_tokenHash`).on(`aiAgent`).column("tokenHash"),
 					// Partial index for actively watched payments (verifiedAt/stoppedAt are null).
 					create(`paymentWatchingState_watching_by_timestamps`)
 						.on(`paymentWatchingState`)

@@ -26,7 +26,7 @@ export type Pos = {
 	bills: Record<Id, PosBill>;
 };
 
-const posBillQuery = createQuery<PosBill>((db) =>
+export const posBillQuery = createQuery<PosBill>((db) =>
 	db
 		.selectFrom("posBill")
 		.select(

@@ -8,6 +8,8 @@ const locale = {
     "aiAssistantDescription": "Chat with the model and let it execute local actions in the app.",
     "aiAssistantSettings": "AI Assistant settings",
     "aiAssistantTabsSections": "Sections",
+    "aiAssistantMcp": "MCP",
+    "aiAssistantMcpDescription": "Connect an external AI agent over MCP. It can only run the actions you grant it here.",
     "emailSendingSettingsSmtpConfiguration": "Email sending settings (SMTP configuration)",
     "fioBankPlugin": "Fio bank plugin",
     "invoiceNumberSeries": "Invoice number series",
@@ -46,6 +48,59 @@ const locale = {
       "deleteDescription": "This action cannot be undone.",
       "deleteConfirmText": "Delete",
       "deleteCancelText": "Cancel"
+    }
+  },
+  "mcp": {
+    "endpoint": {
+      "title": "Endpoint",
+      "account": "Account: {{name}}. The endpoint accepts only agents created in this account.",
+      "listening": "Listening",
+      "portBusy": "Port {{port}} is held by another process. Do not connect agents until it is free.",
+      "desktopOnly": "The MCP endpoint runs only in the finito desktop app and accepts only agents created in its own account. Create the agent in the desktop app (AI Assistant, MCP tab), a token minted in a browser does not work there.",
+      "keepOpen": "The desktop app has to stay open while agents work. Revoking an agent reaches other devices after sync."
+    },
+    "agents": {
+      "title": "Agents",
+      "empty": "No agent yet.",
+      "columns": {
+        "label": "Name",
+        "scopes": "Grants",
+        "lastUsedAt": "Last used"
+      },
+      "neverUsed": "Never",
+      "edit": "Edit",
+      "revoke": "Revoke",
+      "revokeConfirm": {
+        "title": "Revoke {{label}}?",
+        "description": "The agent loses access right away on this device and after sync on the others.",
+        "confirm": "Revoke"
+      },
+      "editDialog": {
+        "title": "Edit {{label}}",
+        "description": "Changing the grants takes effect on the next call. The token stays the same."
+      }
+    },
+    "newAgent": {
+      "title": "Add an agent"
+    },
+    "scopes": {
+      "catalog_read": "Catalog: read",
+      "catalog_write": "Catalog: create and edit items",
+      "pos_read": "POS: read bills and tables",
+      "pos_write": "POS: create tables and codes, open bills and add items",
+      "payments_read": "Payments: read",
+      "payments_write": "Payments: create requests",
+      "contacts_read": "Contacts: read",
+      "settings_write": "Settings: default currency and app language"
+    },
+    "token": {
+      "title": "Token for {{label}}",
+      "showOnce": "The token is shown only now. The agent stores it in plain text in its own configuration.",
+      "token": "Token",
+      "claudeCode": "Claude Code",
+      "claudeDesktop": "Claude Desktop through the mcp-remote bridge",
+      "copy": "Copy",
+      "done": "Done"
     }
   },
   "form": {
@@ -135,6 +190,19 @@ const locale = {
       },
       "description": {
         "google-api-key": "Saved locally in Evolu and used directly from the browser."
+      }
+    },
+    "mcp-agent-form": {
+      "label": {
+        "label": "Name",
+        "allow-all": "Allow everything"
+      },
+      "title": {
+        "scopes": "Grants"
+      },
+      "description": {
+        "label": "For example Claude Code on my laptop.",
+        "allow-all": "Grants every permission below, including the ones added later."
       }
     },
     "fio-plugin-form": {

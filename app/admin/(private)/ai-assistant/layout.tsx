@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquareTextIcon, SettingsIcon } from "lucide-react";
+import { MessageSquareTextIcon, PlugIcon, SettingsIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DefautLayout } from "@/app/admin/defaut-layout";
 import { SubNavShellRoot } from "@/components/sub-nav-shell";
@@ -17,6 +17,12 @@ const aiAssistantTabs = [
 		label: "Settings",
 		icon: SettingsIcon,
 		nextUrl: "/admin/ai-assistant/settings",
+	},
+	{
+		value: "mcp",
+		label: "MCP",
+		icon: PlugIcon,
+		nextUrl: "/admin/ai-assistant/mcp",
 	},
 ] as const;
 

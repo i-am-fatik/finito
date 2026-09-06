@@ -29,3 +29,10 @@ base64 = "0.22.1"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 openssl-sys = { version = "=0.9.109", features = ["vendored"] } # fix for android build
+tokio = { version = "1", features = ["sync", "time"] }
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+tokio = { version = "1", features = ["net", "sync", "time"] }

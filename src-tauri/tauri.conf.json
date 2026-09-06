@@ -14,7 +14,7 @@
 			{
 				"label": "main",
 				"title": "Finito",
-				"url": "/",
+				"url": "/admin",
 				"width": 800,
 				"height": 600,
 				"resizable": true,

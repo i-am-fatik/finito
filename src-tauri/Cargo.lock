@@ -98,6 +98,9 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
  "lettre",
  "log",
  "openssl-sys",
@@ -109,6 +112,7 @@ dependencies = [
  "tauri-plugin-fs",
  "tauri-plugin-http",
  "tauri-plugin-log",
+ "tokio",
 ]
 
 [[package]]
@@ -1681,6 +1685,7 @@ dependencies = [
  "http",
  "http-body",
  "httparse",
+ "httpdate",
  "itoa",
  "pin-project-lite",
  "pin-utils",

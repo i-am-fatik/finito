@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
+import { McpBridge } from "@/components/mcp-bridge";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 export default function Layout({
@@ -22,6 +23,9 @@ export default function Layout({
 			<SidebarInset>
 				<Suspense fallback={null}>{children}</Suspense>
 			</SidebarInset>
+			<Suspense fallback={null}>
+				<McpBridge />
+			</Suspense>
 		</SidebarProvider>
 	);
 }

@@ -8,6 +8,8 @@ const locale = {
     "aiAssistantDescription": "Chatujte s modelem a nechte ho vykonávat lokální akce v aplikaci.",
     "aiAssistantSettings": "Nastavení AI asistenta",
     "aiAssistantTabsSections": "Sekce",
+    "aiAssistantMcp": "MCP",
+    "aiAssistantMcpDescription": "Připojte externího AI agenta přes MCP. Smí jen akce, které mu tady přidělíte.",
     "emailSendingSettingsSmtpConfiguration": "Nastavení odesílání e-mailů (konfigurace SMTP)",
     "fioBankPlugin": "Plugin Fio banky",
     "invoiceNumberSeries": "Číselná řada faktury",
@@ -46,6 +48,59 @@ const locale = {
       "deleteDescription": "Tuto akci nelze vrátit zpět.",
       "deleteConfirmText": "Smazat",
       "deleteCancelText": "Zrušit"
+    }
+  },
+  "mcp": {
+    "endpoint": {
+      "title": "Endpoint",
+      "account": "Účet: {{name}}. Endpoint přijímá jen agenty založené v tomto účtu.",
+      "listening": "Běží",
+      "portBusy": "Port {{port}} drží jiný proces. Agenty nepřipojujte, dokud se neuvolní.",
+      "desktopOnly": "MCP endpoint běží jen v desktopové aplikaci finito a přijímá jen agenty založené v jejím účtu. Agenta založte v desktopové aplikaci (AI asistent, záložka MCP), token z prohlížeče tam nefunguje.",
+      "keepOpen": "Desktopová aplikace musí zůstat otevřená, dokud agenti pracují. Zrušení agenta se na ostatní zařízení dostane po synchronizaci."
+    },
+    "agents": {
+      "title": "Agenti",
+      "empty": "Zatím žádný agent.",
+      "columns": {
+        "label": "Název",
+        "scopes": "Práva",
+        "lastUsedAt": "Naposledy použit"
+      },
+      "neverUsed": "Nikdy",
+      "edit": "Upravit",
+      "revoke": "Zrušit",
+      "revokeConfirm": {
+        "title": "Zrušit agenta {{label}}?",
+        "description": "Agent ztratí přístup okamžitě na tomto zařízení a po synchronizaci na ostatních.",
+        "confirm": "Zrušit"
+      },
+      "editDialog": {
+        "title": "Úprava agenta {{label}}",
+        "description": "Změna práv platí od dalšího volání. Token zůstává stejný."
+      }
+    },
+    "newAgent": {
+      "title": "Přidat agenta"
+    },
+    "scopes": {
+      "catalog_read": "Katalog: čtení",
+      "catalog_write": "Katalog: zakládání a úpravy položek",
+      "pos_read": "Pokladna: čtení účtů a stolů",
+      "pos_write": "Pokladna: zakládání stolů a kódů, otevírání účtů a přidávání položek",
+      "payments_read": "Platby: čtení",
+      "payments_write": "Platby: vytváření požadavků",
+      "contacts_read": "Kontakty: čtení",
+      "settings_write": "Nastavení: výchozí měna a jazyk aplikace"
+    },
+    "token": {
+      "title": "Token agenta {{label}}",
+      "showOnce": "Token vidíte jen teď. Agent si ho uloží v nešifrované podobě do vlastní konfigurace.",
+      "token": "Token",
+      "claudeCode": "Claude Code",
+      "claudeDesktop": "Claude Desktop přes mcp-remote",
+      "copy": "Kopírovat",
+      "done": "Hotovo"
     }
   },
   "form": {
@@ -135,6 +190,19 @@ const locale = {
       },
       "description": {
         "google-api-key": "Klíč je uložen lokálně v Evolu a používá se přímo z prohlížeče."
+      }
+    },
+    "mcp-agent-form": {
+      "label": {
+        "label": "Název",
+        "allow-all": "Povolit vše"
+      },
+      "title": {
+        "scopes": "Práva"
+      },
+      "description": {
+        "label": "Například Claude Code na mém notebooku.",
+        "allow-all": "Udělí všechna práva níže, včetně těch, která přibudou později."
       }
     },
     "fio-plugin-form": {
