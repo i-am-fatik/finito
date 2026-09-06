@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import { reset as resetBaseUiWarnings } from "@base-ui/utils/error";
 import {
 	cleanup,
 	fireEvent,
@@ -152,5 +153,30 @@ describe("PosBill move dialogs", () => {
 
 		expect(dialogTriggerText()).toContain("Bar 1");
 		expect(dialogTriggerText()).not.toContain(otherBillId);
+	});
+});
+
+describe("PosBill rendering", () => {
+	it("renders the quantity boxes and the table link without Base UI complaining", () => {
+		const bill = testBill({ id: billId, displayId: 7, itemLabel: "Pivo" });
+		bills = { [billId]: bill };
+		const complaints: string[] = [];
+		const originalError = console.error;
+		console.error = (...args: unknown[]) => {
+			complaints.push(args.map(String).join(" "));
+		};
+
+		try {
+			resetBaseUiWarnings();
+			render(<PosBill billId={billId as never} bill={bill} />);
+			clickButton("pos:bill.split.start");
+			selectOneItem("Pivo");
+		} finally {
+			console.error = originalError;
+		}
+
+		expect(complaints.filter((line) => line.includes("nativeButton"))).toEqual(
+			[],
+		);
 	});
 });

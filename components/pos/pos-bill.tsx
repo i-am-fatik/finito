@@ -307,6 +307,7 @@ const Item: React.FC<{
 								disabled={true}
 								variant="outline"
 								className={"w-14"}
+								nativeButton={false}
 								render={
 									<motion.div
 										key={`${props.item.itemId}:${selectedQuantity}`}
@@ -352,6 +353,7 @@ const Item: React.FC<{
 									disabled={true}
 									variant="outline"
 									className={"w-10"}
+									nativeButton={false}
 									render={
 										<motion.div
 											key={props.item.quantity}
@@ -488,6 +490,7 @@ const TableQrCode: React.FC<{
 				size={"icon"}
 				variant={"outline"}
 				disabled={props.tableQrCode === undefined}
+				nativeButton={false}
 				render={
 					<a href={frontendUrl} target={"_blank"} rel="noopener">
 						<FullscreenIcon />
