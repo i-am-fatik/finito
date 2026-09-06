@@ -69,6 +69,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Field,
+	FieldContent,
 	FieldDescription,
 	FieldError,
 	FieldLabel,
@@ -509,24 +510,24 @@ export const AutoFormInput = {
 				control={props.control}
 				name={props.name}
 				render={({ field, fieldState }) => (
-					<Field data-invalid={fieldState.invalid}>
-						{params.label && (
-							<FieldLabel htmlFor={field.name}>{params.label}</FieldLabel>
-						)}
-						<div className="flex gap-2">
-							<Checkbox
-								{...field}
-								id={field.name}
-								checked={field.value}
-								onCheckedChange={(value) => field.onChange(value === true)}
-								inputRef={field.ref}
-								disabled={params.disabled}
-							/>
-						</div>
-						{params.description && (
-							<FieldDescription>{params.description}</FieldDescription>
-						)}
-						{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+					<Field orientation="horizontal" data-invalid={fieldState.invalid}>
+						<Checkbox
+							{...field}
+							id={field.name}
+							checked={field.value}
+							onCheckedChange={(value) => field.onChange(value === true)}
+							inputRef={field.ref}
+							disabled={params.disabled}
+						/>
+						<FieldContent>
+							{params.label && (
+								<FieldLabel htmlFor={field.name}>{params.label}</FieldLabel>
+							)}
+							{params.description && (
+								<FieldDescription>{params.description}</FieldDescription>
+							)}
+							{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+						</FieldContent>
 					</Field>
 				)}
 			/>
@@ -912,29 +913,35 @@ const createBuilder = <
 			)) as ReturnType<Builder<TSchema, TRootSchema>["line"]>,
 		card: (options, components) =>
 			// @ts-expect-error
-			createComponent(`_line_${prefix}${counter++}`, (props) => (
-				<Card
-					className={`${options.variant === "transparent" ? "bg-transparent shadow-none border-0" : ""}`}
-				>
-					{(options.title || options.description) && (
-						<CardHeader>
-							{options.title && <CardTitle>{options.title}</CardTitle>}
-							{options.description && (
-								<CardDescription>{options.description}</CardDescription>
-							)}
-						</CardHeader>
-					)}
-					<CardContent
-						className={`${options.variant === "transparent" ? "px-0" : ""}`}
+			createComponent(`_line_${prefix}${counter++}`, (props) => {
+				const isTransparent = options.variant === "transparent";
+
+				return (
+					<Card
+						className={
+							isTransparent
+								? "gap-4 overflow-visible rounded-none bg-transparent py-0 shadow-none ring-0"
+								: ""
+						}
 					>
-						<div className={`gap-4 flex flex-col`}>
-							{Object.entries(components).map(([key, Component]) => (
-								<Component key={key} name={key} control={props.control} />
-							))}
-						</div>
-					</CardContent>
-				</Card>
-			)) as ReturnType<Builder<TSchema, TRootSchema>["card"]>,
+						{(options.title || options.description) && (
+							<CardHeader className={isTransparent ? "px-0" : ""}>
+								{options.title && <CardTitle>{options.title}</CardTitle>}
+								{options.description && (
+									<CardDescription>{options.description}</CardDescription>
+								)}
+							</CardHeader>
+						)}
+						<CardContent className={isTransparent ? "px-0" : ""}>
+							<div className={`gap-4 flex flex-col`}>
+								{Object.entries(components).map(([key, Component]) => (
+									<Component key={key} name={key} control={props.control} />
+								))}
+							</div>
+						</CardContent>
+					</Card>
+				);
+			}) as ReturnType<Builder<TSchema, TRootSchema>["card"]>,
 		collapsibleSeparator: (options, components) =>
 			// @ts-expect-error
 			createComponent(`_line_${prefix}${counter++}`, (props) => {
