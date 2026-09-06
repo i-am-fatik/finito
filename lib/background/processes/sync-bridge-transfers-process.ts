@@ -91,37 +91,49 @@ export const syncBridgeTransfersProcess: BackgroundProcess = {
 			}
 
 			const transactionId = createIdFromString(`lnBridge:${payment.id}`);
-			const amount = extractBtcAmountFromLightningInvoice(payment.lnInvoice);
 
-			props.evolu.upsert("transaction", {
-				id: transactionId,
-				accountId: payment.accountId,
-				_tag: "accountLud16",
-				amount,
-				currency: Currency.BTC,
-				occurredAt: TimestampMs(Date.now()),
-				note: NonEmptyString("Incoming LN payment proved through the gateway"),
-				internalTransferGroupId: null,
-			});
-			props.evolu.upsert("transactionLud16", {
-				id: transactionId,
-				lnInvoice: payment.lnInvoice,
-				paymentHash: payment.paymentHash,
-			});
-			await upsertPaymentMatchingClaims({
-				transactionId,
-				accountId: payment.accountId,
-				paymentHash: payment.paymentHash,
-				amount,
-				source: "paymentLnBridge",
-				createdBy: "syncBridgeTransfersProcess",
-			});
-			props.evolu.update("paymentWatchingState", {
-				id: payment.id,
-				verifiedAt: TimestampMs(Date.now()),
-				proveType: "lnBridge",
-				transactionId,
-			});
+			try {
+				const amount = extractBtcAmountFromLightningInvoice(payment.lnInvoice);
+
+				props.evolu.upsert("transaction", {
+					id: transactionId,
+					accountId: payment.accountId,
+					_tag: "accountLud16",
+					amount,
+					currency: Currency.BTC,
+					occurredAt: TimestampMs(Date.now()),
+					note: NonEmptyString(
+						"Incoming LN payment proved through the gateway",
+					),
+					internalTransferGroupId: null,
+				});
+				props.evolu.upsert("transactionLud16", {
+					id: transactionId,
+					lnInvoice: payment.lnInvoice,
+					paymentHash: payment.paymentHash,
+				});
+				await upsertPaymentMatchingClaims({
+					transactionId,
+					accountId: payment.accountId,
+					paymentHash: payment.paymentHash,
+					amount,
+					source: "paymentLnBridge",
+					createdBy: "syncBridgeTransfersProcess",
+				});
+				props.evolu.update("paymentWatchingState", {
+					id: payment.id,
+					verifiedAt: TimestampMs(Date.now()),
+					proveType: "lnBridge",
+					transactionId,
+				});
+			} catch (error) {
+				stopWatching(payment.id, PaymentWatchingStopReason.Error);
+				report(
+					"error",
+					`Payment ${payment.id} was paid but could not be recorded, reconcile it by hand: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				return;
+			}
 
 			verifiedCount += 1;
 			report("success", `Verified ${verifiedCount} gateway payment(s).`);

@@ -81,6 +81,7 @@ const setupProcess = (params?: {
 	lnInvoice?: string;
 	rows?: EvoluRow[];
 	claimedPaymentIds?: string[];
+	reconciliationFailure?: Error;
 	expectedTipAmount?: number | null;
 	expectedProductAmount?: number;
 }) => {
@@ -111,6 +112,9 @@ const setupProcess = (params?: {
 				];
 			}
 			if (query.includes("paymentLnBridge")) {
+				if (params?.reconciliationFailure !== undefined) {
+					throw params.reconciliationFailure;
+				}
 				return (params?.claimedPaymentIds ?? [paymentId]).map((id) => ({ id }));
 			}
 			return [];
@@ -488,7 +492,7 @@ describe("syncBridgeTransfersProcess", () => {
 		);
 	});
 
-	it("misreports a settled payment it cannot read an amount from as an unreachable gateway, and keeps asking", async () => {
+	it("stops a payment it cannot record and tells the operator to reconcile it by hand", async () => {
 		jest.useFakeTimers();
 		const amountless = testLightningInvoice({
 			amountSats: null,
@@ -505,17 +509,62 @@ describe("syncBridgeTransfersProcess", () => {
 		await flushPendingWork();
 
 		expect(writesTo(upserts, "transaction")).toHaveLength(0);
-		expect(updates).toHaveLength(0);
-		expect(reports.at(-1)?.type).toBe("error");
-		expect(reports.at(-1)?.description).toBe(
-			"Gateway unreachable: Value must not be undefined",
-		);
+		expect(updates).toEqual([
+			{
+				table: "paymentWatchingState",
+				values: {
+					id: paymentId,
+					stoppedAt: expect.any(Number),
+					stopReason: PaymentWatchingStopReason.Error,
+				},
+			},
+		]);
+		expect(reports.at(-1)).toMatchObject({
+			type: "error",
+			description: `Payment ${paymentId} was paid but could not be recorded, reconcile it by hand: Value must not be undefined`,
+		});
 
 		jest.advanceTimersByTime(retryDelayMs);
 		await flushPendingWork();
 		stop();
 		jest.useRealTimers();
 
-		expect(waitCalls).toHaveLength(2);
+		expect(waitCalls).toHaveLength(1);
+	});
+
+	it("keeps the transaction it wrote before the failure out of the books", async () => {
+		const amountless = testLightningInvoice({
+			amountSats: null,
+			createdAtSec: Math.floor(Date.now() / 1000),
+			expirySeconds: 3600,
+			preimageSeed,
+		});
+		outcomes = [{ status: "paid", preimage: amountless.preimage }];
+		const { run, upserts } = setupProcess({ lnInvoice: amountless.lnInvoice });
+
+		const stop = await run();
+		await flushPendingWork();
+		stop();
+
+		expect(writesTo(upserts, "transactionLud16")).toHaveLength(0);
+		expect(writesTo(upserts, "reconciliationClaim")).toHaveLength(0);
+	});
+
+	it("stops a payment whose claim could not be written, leaving the transaction for the operator to match", async () => {
+		outcomes = [{ status: "paid", preimage: invoice.preimage }];
+		const { run, upserts, updates, reports } = setupProcess({
+			reconciliationFailure: new Error("evolu worker died"),
+		});
+
+		const stop = await run();
+		await flushPendingWork();
+		stop();
+
+		expect(writesTo(upserts, "transaction")).toHaveLength(1);
+		expect(writesTo(upserts, "reconciliationClaim")).toHaveLength(0);
+		expect(updates[0]?.values.stopReason).toBe(PaymentWatchingStopReason.Error);
+		expect(reports.at(-1)?.description).toContain(
+			"was paid but could not be recorded",
+		);
 	});
 });
