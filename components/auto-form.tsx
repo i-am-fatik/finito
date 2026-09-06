@@ -107,7 +107,7 @@ import { cn } from "@/lib/shared/ui/cn";
 import { shiftNumericString } from "@/lib/shared/utils/number";
 import {
 	decimalStringToMinorUnits,
-	minorUnitsToDecimalStringForUI,
+	minorUnitsToDecimalString,
 } from "@/lib/shared/zod/money-codec";
 
 export type AutoFormComponents<
@@ -361,7 +361,7 @@ export const AutoFormInput = {
 
 								if (newAmount !== null) {
 									onChange(
-										minorUnitsToDecimalStringForUI({
+										minorUnitsToDecimalString({
 											value: newAmount,
 											currency: targetCurrency,
 										}),
