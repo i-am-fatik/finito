@@ -10,6 +10,7 @@ import { useMemo } from "react";
 import { BillingSettingsForm } from "@/app/admin/(private)/settings/billing-settings/billing-settings-form";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { createQuery } from "@/lib/evolu";
+import { defaultExchangeRateSource } from "@/lib/integrations/currency-converter/currency-converter";
 
 export default function Home() {
 	const itemId = createIdFromString("");
@@ -22,6 +23,7 @@ export default function Home() {
 						"billingSettings.ownContactId as ownContactId",
 						"billingSettings.defaultCurrency as defaultCurrency",
 						"billingSettings.defaultTimezone as defaultTimezone",
+						"billingSettings.exchangeRateSource as exchangeRateSource",
 						"billingSettings.defaultPaymentMethod as defaultPaymentMethod",
 						"billingSettings.defaultBankTransferCzKey as defaultBankTransferCzKey",
 						"billingSettings.defaultLnZapKey as defaultLnZapKey",
@@ -67,6 +69,8 @@ export default function Home() {
 								ownContactId: item.ownContactId,
 								defaultCurrency: item.defaultCurrency,
 								defaultTimezone: item.defaultTimezone,
+								exchangeRateSource:
+									item.exchangeRateSource ?? defaultExchangeRateSource,
 								defaultPaymentMethod: item.defaultPaymentMethod,
 								defaultBankTransferCzKey: item.defaultBankTransferCzKey,
 								defaultLnZapKey: item.defaultLnZapKey,
