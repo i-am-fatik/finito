@@ -1,5 +1,6 @@
 import type { DeviceEvolu } from "@/lib/evolu/device";
 import { runCatalogScenario } from "@/lib/testing/e2e-catalog";
+import { runPosChargeScenario } from "@/lib/testing/e2e-pos";
 import type {
 	CatalogScenarioInput,
 	CatalogScenarioResult,
@@ -7,6 +8,8 @@ import type {
 	E2EScenarioName,
 	E2EScenarioResultMap,
 	E2EWorkerContext,
+	PosChargeScenarioInput,
+	PosChargeScenarioResult,
 } from "@/lib/testing/e2e-types";
 
 type ScenarioRunner<TInput, TResult> = (
@@ -24,6 +27,10 @@ const scenarioRegistry: {
 	catalog: runCatalogScenario as ScenarioRunner<
 		CatalogScenarioInput,
 		CatalogScenarioResult
+	>,
+	"pos-charge": runPosChargeScenario as ScenarioRunner<
+		PosChargeScenarioInput,
+		PosChargeScenarioResult
 	>,
 };
 

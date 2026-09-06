@@ -22,10 +22,18 @@ export type CatalogScenarioInput =
 			};
 	  };
 
-export type E2EScenarioName = "catalog";
+export type PosChargeScenarioInput = {
+	item?: {
+		label?: string;
+		price?: number;
+	};
+};
+
+export type E2EScenarioName = "catalog" | "pos-charge";
 
 export type E2EScenarioInputMap = {
 	catalog: CatalogScenarioInput;
+	"pos-charge": PosChargeScenarioInput;
 };
 
 export type CatalogScenarioResult = {
@@ -41,8 +49,19 @@ export type CatalogScenarioResult = {
 	};
 };
 
+export type PosChargeScenarioResult = {
+	mnemonic: string;
+	deviceId: string;
+	cashAccountId: string;
+	item: {
+		id: string;
+		label: string;
+	};
+};
+
 export type E2EScenarioResultMap = {
 	catalog: CatalogScenarioResult;
+	"pos-charge": PosChargeScenarioResult;
 };
 
 export type E2EWorkerContext = {

@@ -1,8 +1,8 @@
-import { createIdFromString, sqliteTrue } from "@evolu/common";
-import { sha256 } from "@noble/hashes/sha2.js";
+import { sqliteTrue } from "@evolu/common";
 import { atom } from "jotai";
 import { accountAtom } from "@/atoms/account";
 import { createAppEvolu, createQuery } from "@/lib/evolu";
+import { defaultAccountIds } from "@/lib/evolu/default-accounts";
 import { PaymentDefaultMethodType } from "@/lib/evolu/model/payment-default-method";
 import { FiatCurrency, NonEmptyString255 } from "@/lib/shared/types";
 
@@ -40,21 +40,12 @@ export const evoluAtom = atom(async (get) => {
 
 		// Create default accounts and payment methods
 		{
-			const msgBuffer = new TextEncoder().encode(appOwner.mnemonic);
-			const hashBuffer = sha256(msgBuffer);
-			const hashArray = Array.from(new Uint8Array(hashBuffer));
-			const sparkAccountId = createIdFromString(
-				hashArray.map((b) => b.toString(16).padStart(2, "0")).join(""),
-			);
-			const cashRegisterAccountId = createIdFromString(
-				`${sparkAccountId}:cashRegister`,
-			);
-			const sparkPaymentDefaultMethodId = createIdFromString(
-				`${sparkAccountId}:paymentDefaultMethod:${PaymentDefaultMethodType.BtcLn}`,
-			);
-			const cashRegisterPaymentDefaultMethodId = createIdFromString(
-				`${cashRegisterAccountId}:paymentDefaultMethod:${PaymentDefaultMethodType.Cash}`,
-			);
+			const {
+				sparkAccountId,
+				cashRegisterAccountId,
+				sparkPaymentDefaultMethodId,
+				cashRegisterPaymentDefaultMethodId,
+			} = defaultAccountIds(appOwner.mnemonic);
 
 			const sparkAccount = await evolu.loadQuery(
 				createQuery((db) =>

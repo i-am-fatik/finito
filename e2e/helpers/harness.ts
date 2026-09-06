@@ -52,16 +52,20 @@ export const runScenario = async <TName extends E2EScenarioName>(
 ): Promise<E2EScenarioResultMap[TName]> => {
 	await resetBrowserState(page);
 
-	return await page.evaluate(
-		async ({ scenarioName, scenarioInput, scenarioContext }) => {
+	const result: unknown = await page.evaluate(
+		async (params: {
+			scenarioName: E2EScenarioName;
+			scenarioInput: E2EScenarioInputMap[E2EScenarioName];
+			scenarioContext: E2EScenarioContext;
+		}) => {
 			if (!window.__finitoE2E) {
 				throw new Error("E2E harness is not available.");
 			}
 
 			return await window.__finitoE2E.runScenario(
-				scenarioName,
-				scenarioInput,
-				scenarioContext,
+				params.scenarioName,
+				params.scenarioInput as never,
+				params.scenarioContext,
 			);
 		},
 		{
@@ -70,6 +74,8 @@ export const runScenario = async <TName extends E2EScenarioName>(
 			scenarioContext: context,
 		},
 	);
+
+	return result as E2EScenarioResultMap[TName];
 };
 
 export const seedCatalog = async (
