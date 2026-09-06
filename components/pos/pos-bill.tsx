@@ -72,7 +72,7 @@ import {
 	StringToNullableStringSchema,
 } from "@/lib/shared/types";
 import { cn } from "@/lib/shared/ui/cn";
-import { formatMoney } from "@/lib/shared/utils/format";
+import { currencyDisplayUnit, formatMoney } from "@/lib/shared/utils/format";
 import { clientBaseUrl } from "@/lib/shared/utils/window";
 import {
 	convertMinorUnitsWithRate,
@@ -109,6 +109,8 @@ const posTableCodesQuery = createQuery((db) =>
 			tableId: KyselyNotNull;
 		}>(),
 );
+
+const rateRefreshIntervalMs = 60_000;
 
 const calculateBillTotals = (props: {
 	billCurrency: Currency;
@@ -661,6 +663,18 @@ export const PosBill: React.FC<{
 				});
 
 	const bill = props.bill;
+	const rateRefreshedAt = useRef(new Map<string, number>());
+	const [rateSweepAt, setRateSweepAt] = useState(() => Date.now());
+
+	useEffect(() => {
+		const sweep = setInterval(
+			() => setRateSweepAt(Date.now()),
+			rateRefreshIntervalMs,
+		);
+
+		return () => clearInterval(sweep);
+	}, []);
+
 	useEffect(() => {
 		if (bill === undefined || billId === undefined) {
 			return;
@@ -668,12 +682,15 @@ export const PosBill: React.FC<{
 
 		let ignore = false;
 		for (const currency of billTotals.totalPerCurrency.keys()) {
+			const pair = `${bill.currency}/${currency}`;
+			const refreshedAt = rateRefreshedAt.current.get(pair) ?? 0;
 			if (
 				currency === bill.currency ||
-				bill.rates.some((rate) => rate.currency === currency)
+				rateSweepAt - refreshedAt < rateRefreshIntervalMs
 			) {
 				continue;
 			}
+			rateRefreshedAt.current.set(pair, rateSweepAt);
 
 			const probe = Integer(10 ** currencyFractionDigits[bill.currency]);
 			void currencyConverter
@@ -701,7 +718,7 @@ export const PosBill: React.FC<{
 		return () => {
 			ignore = true;
 		};
-	}, [bill, billId, billTotals.totalPerCurrency, setBillRate]);
+	}, [bill, billId, billTotals.totalPerCurrency, setBillRate, rateSweepAt]);
 
 	const selectedItems = useMemo(
 		() =>
@@ -1090,7 +1107,14 @@ export const PosBill: React.FC<{
 														currency !== props.bill.currency && (
 															<div className="space-y-2">
 																<div className="flex justify-between text-md font-bold">
-																	<span>{t("pos:bill.rate")}</span>
+																	<span>
+																		{t("pos:bill.rate", {
+																			unit: currencyDisplayUnit(currency),
+																			billUnit: currencyDisplayUnit(
+																				props.bill.currency,
+																			),
+																		})}
+																	</span>
 																	<span>
 																		<Input
 																			className={"text-right"}

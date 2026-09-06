@@ -6,7 +6,7 @@ const locale = {
     "pay": "Pay",
     "paid": "Bill {{label}} paid",
     "undoPayment": "Undo",
-    "rate": "Rate:",
+    "rate": "Rate ({{unit}} per 1 {{billUnit}}):",
     "selectTable": "Select a table",
     "split": {
       "cancel": "Cancel",

@@ -6,7 +6,7 @@ const locale = {
     "pay": "Zaplatit",
     "paid": "Účet {{label}} zaplacen",
     "undoPayment": "Vrátit",
-    "rate": "Kurz:",
+    "rate": "Kurz ({{unit}} za 1 {{billUnit}}):",
     "selectTable": "Vyberte stůl",
     "split": {
       "cancel": "Zrušit",

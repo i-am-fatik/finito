@@ -4,6 +4,9 @@ import {
 	minorUnitsToDecimalString,
 } from "@/lib/shared/zod/money-codec";
 
+export const currencyDisplayUnit = (currency: string) =>
+	currency.toUpperCase() === "BTC" ? "Sats" : currency.toUpperCase();
+
 export function formatAmount(
 	amount: number,
 	currency?: string | undefined,
@@ -19,7 +22,7 @@ export function formatAmount(
 			maximumFractionDigits: 0,
 		})
 			.format(amount * 100000000)
-			.replace("USD", "Sats");
+			.replace("USD", currencyDisplayUnit(normalizedCurrency));
 	}
 
 	try {
