@@ -321,18 +321,7 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 			})
 			.listen({
 				createPaymentFromSubscribedBill: async (input) => {
-					const subscription = subscriptionRef.get(input.subscriptionId);
-					if (subscription === undefined) {
-						return {
-							variant: "info",
-							payload: {
-								status: "failure",
-								text: NonEmptyString("Unexpected subscription"),
-							},
-						};
-					}
-
-					const bill = findBillByQrCode(subscription.qrCodeId);
+					const bill = findBillByQrCode(input.qrCodeId);
 					const created = await paymentFromSubscribedBill({
 						evolu: props.evolu,
 						deviceId,
@@ -361,8 +350,8 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 					if (bill !== undefined) {
 						pending.add(input.payment.paymentId, {
 							subscriptionId: input.subscriptionId,
-							pubkey: subscription.pubkey,
-							qrCodeId: subscription.qrCodeId,
+							pubkey: input.pubkey,
+							qrCodeId: input.qrCodeId,
 							billId: bill.id,
 							lines: created.lines,
 							expiresAt: created.expiresAt,

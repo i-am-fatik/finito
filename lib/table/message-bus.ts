@@ -19,6 +19,8 @@ export const tableRequestMessageBus = createNostrMessageBus<{
 	createPaymentFromSubscribedBill: {
 		input: {
 			subscriptionId: Uuid7;
+			pubkey: string;
+			qrCodeId: NonEmptyString;
 			payment: TablePaymentRequest;
 		};
 		output:

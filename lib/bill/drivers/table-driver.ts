@@ -52,6 +52,8 @@ export class TableDriver implements BillDriver {
 				"createPaymentFromSubscribedBill",
 				{
 					subscriptionId: expectedSubscriptionId,
+					pubkey: ndk.signer.pubkey,
+					qrCodeId: qrCodeIdResult.data,
 					payment: params,
 				},
 			);
