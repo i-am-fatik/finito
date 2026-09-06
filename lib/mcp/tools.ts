@@ -36,6 +36,7 @@ import {
 	PositiveNumber,
 } from "@/lib/shared/types";
 import {
+	convertMinorUnitsWithRate,
 	decimalStringToMinorUnitsForUI,
 	minorUnitsToDecimalStringForUI,
 } from "@/lib/shared/zod/money-codec";
@@ -140,6 +141,45 @@ const parseAmount = (params: { amount: string; currency: Currency }) => {
 	return minorUnits === null || minorUnits <= 0 ? null : minorUnits;
 };
 
+const subtotalPerCurrency = (bill: PosBill) => {
+	const totals = new Map<Currency, Integer>();
+	for (const line of bill.items) {
+		totals.set(
+			line.item.currency,
+			Integer(
+				(totals.get(line.item.currency) ?? 0) +
+					Math.round(line.item.price * line.quantity),
+			),
+		);
+	}
+
+	return totals;
+};
+
+const billTotal = (bill: PosBill) => {
+	let total = 0;
+	for (const [currency, value] of subtotalPerCurrency(bill)) {
+		if (currency === bill.currency) {
+			total += value;
+			continue;
+		}
+
+		const rate = bill.rates.find((item) => item.currency === currency)?.rate;
+		if (rate === undefined) {
+			return null;
+		}
+
+		total += convertMinorUnitsWithRate({
+			value,
+			sourceCurrency: currency,
+			targetCurrency: bill.currency,
+			rate,
+		});
+	}
+
+	return Integer(total);
+};
+
 const describeBill = (bill: PosBill) => ({
 	id: bill.id,
 	displayId: bill.displayId,
@@ -152,19 +192,21 @@ const describeBill = (bill: PosBill) => ({
 		catalogItemId: line.catalogItemId,
 		label: line.item.label,
 		quantity: line.quantity,
-		unitPrice: decimal(line.item.price, bill.currency),
+		currency: line.item.currency,
+		unitPrice: decimal(line.item.price, line.item.currency),
 		lineTotal: decimal(
 			Math.round(line.item.price * line.quantity),
-			bill.currency,
+			line.item.currency,
 		),
 	})),
-	total: decimal(
-		bill.items.reduce(
-			(sum, line) => sum + Math.round(line.item.price * line.quantity),
-			0,
-		),
-		bill.currency,
-	),
+	subtotals: [...subtotalPerCurrency(bill)].map(([currency, value]) => ({
+		currency,
+		amount: decimal(value, currency),
+	})),
+	total: (() => {
+		const total = billTotal(bill);
+		return total === null ? null : decimal(total, bill.currency);
+	})(),
 });
 
 const registerCatalogReadTools = (server: McpServer, deps: AgentToolDeps) => {
@@ -365,7 +407,7 @@ const registerPosReadTools = (server: McpServer, deps: AgentToolDeps) => {
 		{
 			title: "List open bills",
 			description:
-				"Lists the open POS bills with their table, items, quantities and totals in the display units of the bill currency, sats for BTC.",
+				"Lists the open POS bills with their table and items. Every amount is in the display units of the currency named next to it, sats for BTC. Subtotals are given per currency, and total is the sum in the bill currency, or null when the bill holds an item in a currency it has no exchange rate for.",
 			annotations: readOnly,
 		},
 		() =>
