@@ -496,6 +496,9 @@ describe("handleMcpHttpRequest", () => {
 		expect(JSON.parse(response.body).result.instructions).toContain(
 			"contacts_read",
 		);
+		expect(JSON.parse(response.body).result.instructions).toContain(
+			"sats for BTC",
+		);
 	});
 
 	it("lists the collected errors newest first, and only under the diagnostics scope", async () => {

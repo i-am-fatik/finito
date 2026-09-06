@@ -92,7 +92,7 @@ const parseJsonRpcBody = (
 };
 
 const describeGrants = (label: string, scopes: ReadonlySet<AiAgentScope>) =>
-	`You are connected to the finito POS as the agent "${label}" with these grants: ${[...scopes].join(", ")}. Amounts are decimal strings in major units of the named currency. Only the listed tools exist for you.`;
+	`You are connected to the finito POS as the agent "${label}" with these grants: ${[...scopes].join(", ")}. Amounts are decimal strings in the display units of the named currency, sats for BTC. Only the listed tools exist for you.`;
 
 const touchLastUsedAt = (
 	deps: AgentToolDeps & { now?: () => number },
