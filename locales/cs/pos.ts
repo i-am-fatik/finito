@@ -41,6 +41,12 @@ const locale = {
     "unknownItem": "Neznámá položka"
   },
   "tabs": {
+    "deleteBill": {
+      "cancel": "Zrušit",
+      "confirm": "Smazat účet",
+      "description": "Účet {{label}} obsahuje položky, které se smazáním ztratí.",
+      "title": "Smazat účet?"
+    },
     "newBill": "Nový účet"
   }
 } as const;

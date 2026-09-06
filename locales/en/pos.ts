@@ -41,6 +41,12 @@ const locale = {
     "unknownItem": "Unknown"
   },
   "tabs": {
+    "deleteBill": {
+      "cancel": "Cancel",
+      "confirm": "Delete bill",
+      "description": "Bill {{label}} still has items, they will be lost.",
+      "title": "Delete bill?"
+    },
     "newBill": "New bill"
   }
 } as const;

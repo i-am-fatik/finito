@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBill } from "@/hooks/use-bill";
+import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { usePos } from "@/hooks/use-pos";
 import type { Id } from "@/lib/evolu/types";
 import type { Currency } from "@/lib/shared/types";
@@ -15,6 +16,7 @@ export const PosBillTabs: FC<{
 	const { t } = useTranslation();
 	const pos = usePos();
 	const { deleteBill, createBill } = useBill();
+	const { confirm } = useGlobalDialog();
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const id = searchParams.get("id");
@@ -39,33 +41,49 @@ export const PosBillTabs: FC<{
 		<Tabs value={id ?? ""}>
 			{Object.entries(pos.bills).length > 0 && (
 				<TabsList>
-					{Object.entries(pos.bills).map(([billId, bill]) => (
-						<TabsTrigger
-							className={"pl-4"}
-							key={billId}
-							value={billId}
-							onClick={() =>
-								router.replace(
-									`/admin/pos?id=${encodeURIComponent(billId)}${variant ? `&variant=${encodeURIComponent(variant)}` : ""}`,
-								)
-							}
-						>
-							{bill.table
-								? bill.table.label
-								: bill.label
-									? bill.label
-									: `# ${bill.id}`}
-							<Button
-								size={"xs"}
-								variant={"ghost"}
-								onClick={() => {
-									deleteBill(billId as Id);
-								}}
-							>
-								<CircleXIcon />
-							</Button>
-						</TabsTrigger>
-					))}
+					{Object.entries(pos.bills).map(([billId, bill]) => {
+						const label =
+							bill.table?.label ?? bill.label ?? `#${bill.displayId}`;
+
+						return (
+							<div key={billId} className={"flex h-full items-center"}>
+								<TabsTrigger
+									value={billId}
+									onClick={() =>
+										router.replace(
+											`/admin/pos?id=${encodeURIComponent(billId)}${variant ? `&variant=${encodeURIComponent(variant)}` : ""}`,
+										)
+									}
+								>
+									{label}
+								</TabsTrigger>
+								<Button
+									size={"xs"}
+									variant={"ghost"}
+									aria-label={t("pos:tabs.deleteBill.confirm")}
+									onClick={async () => {
+										if (bill.items.length > 0) {
+											const accepted = await confirm({
+												title: t("pos:tabs.deleteBill.title"),
+												description: t("pos:tabs.deleteBill.description", {
+													label,
+												}),
+												confirmText: t("pos:tabs.deleteBill.confirm"),
+												cancelText: t("pos:tabs.deleteBill.cancel"),
+												confirmVariant: "destructive",
+											});
+											if (!accepted) {
+												return;
+											}
+										}
+										deleteBill(billId as Id);
+									}}
+								>
+									<CircleXIcon />
+								</Button>
+							</div>
+						);
+					})}
 				</TabsList>
 			)}
 			<Button

@@ -862,7 +862,7 @@ export const PosBill: React.FC<{
 									<PosBillName
 										billId={props.billId}
 										billLabel={props.bill?.label ?? ""}
-										placeholder={`# ${props.bill?.id ?? 0}`}
+										placeholder={`#${props.bill?.displayId ?? 0}`}
 									/>
 
 									<PosBillTable
