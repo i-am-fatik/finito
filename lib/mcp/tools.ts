@@ -9,7 +9,11 @@ import {
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { type PosBill, posBillQuery } from "@/hooks/use-pos";
+import {
+	type PosBill,
+	posBillLastDisplayIdQuery,
+	posBillQuery,
+} from "@/hooks/use-pos";
 import { createItemToolInputSchema } from "@/lib/ai/item-assistant";
 import type { DiagnosticEvent } from "@/lib/diagnostics/collector";
 import { createQuery } from "@/lib/evolu";
@@ -187,6 +191,7 @@ const describeBill = (bill: PosBill) => ({
 	tableId: bill.tableId,
 	table: bill.table?.label ?? null,
 	currency: bill.currency,
+	isBeingPaid: bill.paymentId !== null,
 	items: bill.items.map((line) => ({
 		itemId: line.itemId,
 		catalogItemId: line.catalogItemId,
@@ -555,10 +560,10 @@ const registerPosWriteTools = (server: McpServer, deps: AgentToolDeps) => {
 						return refuse(`Table ${tableId} does not exist.`);
 					}
 				}
-				const bills = await deps.evolu.loadQuery(posBillQuery);
-				const displayId = PositiveInteger(
-					bills.reduce((max, bill) => Math.max(max, bill.displayId), 0) + 1,
+				const [lastBill] = await deps.evolu.loadQuery(
+					posBillLastDisplayIdQuery,
 				);
+				const displayId = PositiveInteger((lastBill?.lastDisplayId ?? 0) + 1);
 
 				const { id } = deps.evolu.insert("posBill", {
 					deviceId: deps.deviceId,
@@ -601,6 +606,9 @@ const registerPosWriteTools = (server: McpServer, deps: AgentToolDeps) => {
 				const bill = bills.find((candidate) => candidate.id === billId);
 				if (bill === undefined) {
 					return refuse(`Bill ${billId} is not open.`);
+				}
+				if (bill.paymentId !== null) {
+					return refuse(`Bill ${billId} is being paid at the till.`);
 				}
 				const catalogItem = catalogItems.find(
 					(candidate) => candidate.id === catalogItemId,

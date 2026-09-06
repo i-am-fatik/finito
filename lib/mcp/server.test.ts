@@ -58,10 +58,14 @@ const billRow = {
 	label: null,
 	currency: "CZK",
 	tableId: null,
+	paymentId: null as string | null,
+	closedAt: null,
 	table: null,
 	items: [],
 	rates: [],
 };
+
+const lastBillRow = { lastDisplayId: null as number | null };
 
 const diagnosticRows = [
 	{
@@ -114,6 +118,9 @@ const setup = (params: {
 			}
 			if (sql.includes('from "category"')) {
 				return [];
+			}
+			if (sql.includes("lastDisplayId")) {
+				return [lastBillRow];
 			}
 			if (sql.includes('from "posBill"')) {
 				return [billRow];
@@ -449,6 +456,90 @@ describe("handleMcpHttpRequest", () => {
 			catalogRow.currency = "CZK";
 		}
 		expect(writesTo(inserts, "posBillItemLine")).toHaveLength(1);
+	});
+
+	it("numbers a new bill after the highest display id ever issued, not after the open bills", async () => {
+		const { handle, inserts } = setup({ scopes: [AiAgentScope.PosWrite] });
+
+		lastBillRow.lastDisplayId = 41;
+		try {
+			const response = await handle(
+				post({
+					body: rpc("tools/call", { name: "pos_open_bill", arguments: {} }),
+				}),
+			);
+			expect(resultOf(response).result?.isError).toBeUndefined();
+		} finally {
+			lastBillRow.lastDisplayId = null;
+		}
+		expect(writesTo(inserts, "posBill")).toEqual([
+			{
+				table: "posBill",
+				values: expect.objectContaining({
+					displayId: 42,
+					currency: "CZK",
+					deviceId,
+				}),
+			},
+		]);
+	});
+
+	it("refuses to add an item to a bill that is being paid at the till", async () => {
+		const { handle, inserts } = setup({ scopes: [AiAgentScope.PosWrite] });
+
+		billRow.paymentId = "pay-1";
+		try {
+			const response = await handle(
+				post({
+					body: rpc("tools/call", {
+						name: "pos_add_item_to_bill",
+						arguments: {
+							billId: "bill-1",
+							catalogItemId: "item-1",
+							quantity: 1,
+						},
+					}),
+				}),
+			);
+			expect(resultOf(response).result?.isError).toBe(true);
+			expect(resultOf(response).result?.content?.[0]?.text).toContain(
+				"is being paid at the till",
+			);
+		} finally {
+			billRow.paymentId = null;
+		}
+		expect(writesTo(inserts, "posBillItemLine")).toHaveLength(0);
+	});
+
+	it("tells whether an open bill is being paid at the till", async () => {
+		const { handle } = setup({ scopes: [AiAgentScope.PosRead] });
+		const listBills = async () => {
+			const response = await handle(
+				post({
+					body: rpc("tools/call", {
+						name: "pos_list_open_bills",
+						arguments: {},
+					}),
+				}),
+			);
+			expect(resultOf(response).result?.isError).toBeUndefined();
+			return JSON.parse(
+				resultOf(response).result?.content?.[0]?.text ?? "",
+			) as Array<{ id: string; isBeingPaid: boolean }>;
+		};
+
+		expect(await listBills()).toEqual([
+			expect.objectContaining({ id: "bill-1", isBeingPaid: false }),
+		]);
+
+		billRow.paymentId = "pay-1";
+		try {
+			expect(await listBills()).toEqual([
+				expect.objectContaining({ id: "bill-1", isBeingPaid: true }),
+			]);
+		} finally {
+			billRow.paymentId = null;
+		}
 	});
 
 	it("stamps lastUsedAt at most once per five minutes", async () => {
