@@ -32,6 +32,8 @@ const locale = {
         "iban": "IBAN",
         "currency": "Currency",
         "lud16": "LUD16",
+        "gateway-url": "Gateway URL",
+        "gateway-token": "Gateway token",
         "credentials": "Credentials",
         "seed": "Seed",
         "mnemonic": "Mnemonic"

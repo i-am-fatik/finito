@@ -20,6 +20,7 @@ import { TableIdSchema } from "@/lib/evolu/types";
 import {
 	EmailSchema,
 	FiatCurrency,
+	HttpsUrlSchema,
 	IbanSchema,
 	NonEmptyString255,
 	NonEmptyString255Schema,
@@ -44,6 +45,8 @@ const baseAccountSchema = z.object({
 	}),
 	accountLud16: z.object({
 		lud16: z.string(),
+		gatewayUrl: z.string(),
+		gatewayToken: z.string(),
 	}),
 	accountSpark: z.object({
 		mnemonic: z.string(),
@@ -71,6 +74,10 @@ const accountSchema = z.discriminatedUnion("_tag", [
 		_tag: z.literal("accountLud16"),
 		accountLud16: z.object({
 			lud16: StringToNullableStringSchema.pipe(EmailSchema),
+			gatewayUrl: StringToNullableStringSchema.pipe(HttpsUrlSchema.nullable()),
+			gatewayToken: StringToNullableStringSchema.pipe(
+				NonEmptyString255Schema.nullable(),
+			),
 		}),
 	}),
 	baseAccountSchema.extend({
@@ -115,6 +122,8 @@ const createItemDefaultValues = () =>
 		},
 		accountLud16: {
 			lud16: "",
+			gatewayUrl: "",
+			gatewayToken: "",
 		},
 		accountSpark: {
 			mnemonicVariant: "new",
@@ -181,6 +190,13 @@ const createComponents = (
 			...builder.when("_tag", "accountLud16", {
 				...builder.magicInput("lud16").text({
 					label: t("accounts:form.account-form.label.lud16"),
+				}),
+				...builder.magicInput("gatewayUrl").text({
+					label: t("accounts:form.account-form.label.gateway-url"),
+				}),
+				...builder.magicInput("gatewayToken").text({
+					label: t("accounts:form.account-form.label.gateway-token"),
+					secretContent: true,
 				}),
 			}),
 		})),
@@ -265,6 +281,8 @@ export const AccountForm: React.FC<{
 			} else if (values._tag === "accountLud16") {
 				upserts.accountLud16 = {
 					lud16: values.accountLud16.lud16,
+					gatewayUrl: values.accountLud16.gatewayUrl,
+					gatewayToken: values.accountLud16.gatewayToken,
 				};
 			} else if (values._tag === "accountNwc") {
 				upserts.accountNwc = {

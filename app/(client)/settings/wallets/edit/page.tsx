@@ -53,7 +53,13 @@ export default function Page() {
 						defaultValues={{
 							...item,
 							accountIban: item.accountIban ?? undefined,
-							accountLud16: item.accountLud16 ?? undefined,
+							accountLud16: item.accountLud16
+								? {
+										...item.accountLud16,
+										gatewayUrl: item.accountLud16.gatewayUrl ?? "",
+										gatewayToken: item.accountLud16.gatewayToken ?? "",
+									}
+								: undefined,
 							accountSpark: item.accountSpark
 								? {
 										...item.accountSpark,

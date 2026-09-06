@@ -31,6 +31,7 @@ export const createPaymentDefaultMethodsQuery = (params?: {
 				"account._tag as accountTag",
 				"accountIban.iban as accountIban",
 				"accountLud16.lud16 as accountLud16",
+				"accountLud16.gatewayUrl as accountLud16GatewayUrl",
 			] as const)
 			.where("paymentDefaultMethod.isDeleted", "is not", sqliteTrue)
 			.where("paymentDefaultMethod.type", "is not", null)

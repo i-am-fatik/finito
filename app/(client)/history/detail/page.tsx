@@ -176,6 +176,20 @@ export default function Page() {
 
 								evoluJsonObjectFrom(
 									eb
+										.selectFrom("paymentLnBridge")
+										.select(["lnInvoice", "expirationIn"] as const)
+										.whereRef("paymentLnBridge.id", "=", "payment.id")
+										.where("paymentLnBridge.isDeleted", "is not", sqliteTrue)
+										.where("paymentLnBridge.lnInvoice", "is not", null)
+										.where("paymentLnBridge.expirationIn", "is not", null)
+										.$narrowType<{
+											lnInvoice: KyselyNotNull;
+											expirationIn: KyselyNotNull;
+										}>(),
+								).as("paymentLnBridge"),
+
+								evoluJsonObjectFrom(
+									eb
 										.selectFrom("paymentBankTransferCZ")
 										.select(["iban", "variableSymbol"] as const)
 										.whereRef("paymentBankTransferCZ.id", "=", "payment.id")
@@ -288,6 +302,7 @@ export default function Page() {
 			{(payment.paymentLnZap ||
 				payment.paymentLnSpark ||
 				payment.paymentLnNwc ||
+				payment.paymentLnBridge ||
 				payment.paymentBankTransferCZ) && (
 				<Card>
 					<CardHeader>
@@ -346,6 +361,24 @@ export default function Page() {
 									)}
 									value={formatDateTime(
 										new Date(payment.paymentLnNwc.expirationIn),
+									)}
+								/>
+							</>
+						)}
+						{payment.paymentLnBridge && (
+							<>
+								<FieldRow
+									label={t(
+										"client:historyDetail.metadata.fields.lnBridgeInvoice",
+									)}
+									value={payment.paymentLnBridge.lnInvoice}
+								/>
+								<FieldRow
+									label={t(
+										"client:historyDetail.metadata.fields.lnBridgeExpiration",
+									)}
+									value={formatDateTime(
+										new Date(payment.paymentLnBridge.expirationIn),
 									)}
 								/>
 							</>

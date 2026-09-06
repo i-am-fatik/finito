@@ -36,7 +36,11 @@ export const createGetAccountQuery = (params: { id: Id }) =>
 						evoluJsonObjectFrom(
 							eb
 								.selectFrom("accountLud16")
-								.select(["accountLud16.lud16 as lud16"])
+								.select([
+									"accountLud16.lud16 as lud16",
+									"accountLud16.gatewayUrl as gatewayUrl",
+									"accountLud16.gatewayToken as gatewayToken",
+								])
 								.whereRef("accountLud16.id", "=", "account.id")
 								.where("accountLud16.isDeleted", "is not", sqliteTrue)
 								.where("accountLud16.lud16", "is not", null)

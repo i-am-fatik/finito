@@ -558,6 +558,20 @@ export default function Home() {
 
 								evoluJsonObjectFrom(
 									eb
+										.selectFrom("paymentLnBridge")
+										.select(["lnInvoice", "expirationIn"] as const)
+										.whereRef("paymentLnBridge.id", "=", "payment.id")
+										.where("paymentLnBridge.isDeleted", "is not", sqliteTrue)
+										.where("paymentLnBridge.lnInvoice", "is not", null)
+										.where("paymentLnBridge.expirationIn", "is not", null)
+										.$narrowType<{
+											lnInvoice: KyselyNotNull;
+											expirationIn: KyselyNotNull;
+										}>(),
+								).as("paymentLnBridge"),
+
+								evoluJsonObjectFrom(
+									eb
 										.selectFrom("paymentCash")
 										.select(["accountId"] as const)
 										.whereRef("paymentCash.id", "=", "payment.id")
@@ -682,7 +696,10 @@ export default function Home() {
 
 	const paymentStatus = resolvePaymentStatus({ payment });
 	const lightningPayment =
-		payment.paymentLnSpark ?? payment.paymentLnNwc ?? payment.paymentLnZap;
+		payment.paymentLnSpark ??
+		payment.paymentLnNwc ??
+		payment.paymentLnBridge ??
+		payment.paymentLnZap;
 
 	return (
 		<div className="grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_22rem]">

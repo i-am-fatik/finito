@@ -98,6 +98,8 @@ const locale = {
         "lnSparkInvoice": "LN Spark invoice",
         "lnSparkExpiration": "LN Spark expiration",
         "lnNwcInvoice": "LN NWC invoice",
+        "lnBridgeInvoice": "LN gateway invoice",
+        "lnBridgeExpiration": "LN gateway expiration",
         "lnNwcExpiration": "LN NWC expiration",
         "bankTransferIban": "Bank transfer IBAN",
         "bankTransferVariableSymbol": "Bank transfer variable symbol"

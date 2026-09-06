@@ -12,6 +12,7 @@ import NDK, {
 	type NDKUser,
 } from "@nostr-dev-kit/ndk";
 import { bech32 } from "@scure/base";
+import { ThunderBridge } from "thunder-bridge";
 import { createQuery, type EvoluSchemaType } from "@/lib/evolu";
 import { PaymentDefaultMethodType } from "@/lib/evolu/model/payment-default-method";
 import { PaymentStatus } from "@/lib/evolu/model/payment-status";
@@ -24,6 +25,7 @@ import {
 	type Email,
 	Integer,
 	NonEmptyString,
+	NonEmptyString255,
 	type NonNegativeInteger,
 	VariableSymbol,
 } from "@/lib/shared/types";
@@ -184,6 +186,10 @@ type CreatePaymentParams = {
 		EvoluSchemaType["paymentLnNwc"],
 		"id" | "expirationIn" | "paymentHash" | "lnInvoice"
 	>;
+	paymentLnBridge?: Omit<
+		EvoluSchemaType["paymentLnBridge"],
+		"id" | "expirationIn" | "paymentHash" | "lnInvoice" | "gatewayPaymentId"
+	>;
 	paymentBankTransferCZ?: Omit<EvoluSchemaType["paymentBankTransferCZ"], "id">;
 	paymentCash?: Omit<EvoluSchemaType["paymentCash"], "id">;
 	tipAmount: NonNegativeInteger | null;
@@ -258,6 +264,17 @@ export const createPayment =
 			nwcPaymentResult = await createNwcPayment(deps)({
 				amountInSats: paymentLnNwc.amount,
 				accountId: paymentLnNwc.accountId,
+			});
+		}
+
+		const paymentLnBridge = params.paymentLnBridge;
+		let bridgePaymentResult: Awaited<
+			ReturnType<ReturnType<typeof createBridgePayment>>
+		> | null = null;
+		if (paymentLnBridge) {
+			bridgePaymentResult = await createBridgePayment(deps)({
+				amountInSats: paymentLnBridge.amount,
+				accountId: paymentLnBridge.accountId,
 			});
 		}
 
@@ -395,6 +412,21 @@ export const createPayment =
 			});
 		}
 
+		if (params.paymentLnBridge && bridgePaymentResult) {
+			deps.evolu.upsert("paymentLnBridge", {
+				...params.paymentLnBridge,
+				lnInvoice: bridgePaymentResult.lnInvoice,
+				gatewayPaymentId: bridgePaymentResult.gatewayPaymentId,
+				paymentHash: extractPaymentHashFromLnInvoice(
+					bridgePaymentResult.lnInvoice,
+				),
+				expirationIn: extractExpirationFromLightningInvoice(
+					bridgePaymentResult.lnInvoice,
+				),
+				id,
+			});
+		}
+
 		if (params.paymentBankTransferCZ) {
 			deps.evolu.upsert("paymentBankTransferCZ", {
 				...params.paymentBankTransferCZ,
@@ -409,7 +441,12 @@ export const createPayment =
 			});
 		}
 
-		if (params.paymentLnSpark || params.paymentLnZap || params.paymentLnNwc) {
+		if (
+			params.paymentLnSpark ||
+			params.paymentLnZap ||
+			params.paymentLnNwc ||
+			params.paymentLnBridge
+		) {
 			deps.evolu.upsert("paymentWatchingState", {
 				id,
 				verifiedAt: null,
@@ -455,6 +492,16 @@ export const createPaymentWithDefaultMethods =
 			| Omit<
 					EvoluSchemaType["paymentLnNwc"],
 					"id" | "expirationIn" | "paymentHash" | "lnInvoice"
+			  >
+			| undefined;
+		let paymentLnBridge:
+			| Omit<
+					EvoluSchemaType["paymentLnBridge"],
+					| "id"
+					| "expirationIn"
+					| "paymentHash"
+					| "lnInvoice"
+					| "gatewayPaymentId"
 			  >
 			| undefined;
 		let paymentBankTransferCZ:
@@ -513,10 +560,17 @@ export const createPaymentWithDefaultMethods =
 				if (amountInBtc === undefined) {
 					throw new Error("BTC amount is required for BTC LN payment methods.");
 				}
-				paymentLnZap = {
-					accountId: defaultMethod.accountId,
-					amount: amountInBtc,
-				};
+				if (defaultMethod.accountLud16GatewayUrl) {
+					paymentLnBridge = {
+						accountId: defaultMethod.accountId,
+						amount: amountInBtc,
+					};
+				} else {
+					paymentLnZap = {
+						accountId: defaultMethod.accountId,
+						amount: amountInBtc,
+					};
+				}
 				continue;
 			}
 
@@ -554,6 +608,7 @@ export const createPaymentWithDefaultMethods =
 			paymentLnZap,
 			paymentLnSpark,
 			paymentLnNwc,
+			paymentLnBridge,
 			paymentBankTransferCZ,
 			paymentCash,
 		} satisfies Omit<CreatePaymentParams, "items" | "totalAmount">;
@@ -697,5 +752,56 @@ const createNwcPayment =
 		return {
 			lnInvoice: invoice.invoice,
 			expirationAt: new Date(invoice.expiresAt),
+		} as const;
+	};
+
+const createBridgePayment =
+	(deps: EvoluDep) =>
+	async (params: { accountId: Id; amountInSats: NonNegativeInteger }) => {
+		const accounts = await deps.evolu.loadQuery(
+			createQuery((db) =>
+				db
+					.selectFrom("account")
+					.innerJoin("accountLud16", "accountLud16.id", "account.id")
+					.select([
+						"account._tag as _tag",
+						"accountLud16.lud16 as lud16",
+						"accountLud16.gatewayUrl as gatewayUrl",
+						"accountLud16.gatewayToken as gatewayToken",
+					] as const)
+					.where("account.isDeleted", "is not", sqliteTrue)
+					.where("accountLud16.isDeleted", "is not", sqliteTrue)
+					.where("account.id", "=", params.accountId)
+					.where("accountLud16.lud16", "is not", null)
+					.where("accountLud16.gatewayUrl", "is not", null)
+					.$narrowType<{
+						_tag: KyselyNotNull;
+						lud16: KyselyNotNull;
+						gatewayUrl: KyselyNotNull;
+					}>(),
+			),
+		);
+
+		const account = accounts[0];
+		if (account === undefined) {
+			return;
+		}
+
+		if (account._tag !== "accountLud16") {
+			return;
+		}
+
+		const gateway = new ThunderBridge(account.gatewayUrl, {
+			token: account.gatewayToken ?? undefined,
+			verify: false,
+		});
+		const payment = await gateway.createPayment({
+			lnAddresses: [account.lud16],
+			amountMsat: Number(params.amountInSats) * 1000,
+		});
+
+		return {
+			lnInvoice: NonEmptyString(payment.bolt11),
+			gatewayPaymentId: NonEmptyString255(payment.id),
 		} as const;
 	};

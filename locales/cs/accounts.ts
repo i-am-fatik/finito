@@ -32,6 +32,8 @@ const locale = {
         "iban": "IBAN",
         "currency": "Měna",
         "lud16": "LUD16",
+        "gateway-url": "URL gateway",
+        "gateway-token": "Token gateway",
         "credentials": "Přihlašovací údaje",
         "seed": "Seed",
         "mnemonic": "Mnemonická fráze"

@@ -3,6 +3,7 @@ import type { NDKSigner, NDKUser } from "@nostr-dev-kit/ndk";
 import type { TFunction } from "i18next";
 import type { NotificationUI } from "@/hooks/use-background-processes";
 import { backgroundTableProcessingProcess } from "@/lib/background/processes/background-table-processing-process";
+import { syncBridgeTransfersProcess } from "@/lib/background/processes/sync-bridge-transfers-process";
 import { syncFioTransfersProcess } from "@/lib/background/processes/sync-fio-transfers-process";
 import { syncLnZapTransfersProcess } from "@/lib/background/processes/sync-ln-zap-transfers-process";
 import { syncNwcTransfersProcess } from "@/lib/background/processes/sync-nwc-transfers-process";
@@ -32,6 +33,7 @@ const backgroundProcesses: BackgroundProcess[] = [
 	syncSparkTransfersProcess,
 	syncLnZapTransfersProcess,
 	syncNwcTransfersProcess,
+	syncBridgeTransfersProcess,
 	syncFioTransfersProcess,
 	backgroundTableProcessingProcess,
 	watchNdkRelaysStatusProcess,

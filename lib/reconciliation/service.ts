@@ -4,11 +4,16 @@ import { createQuery } from "@/lib/evolu";
 import type { EvoluDep } from "@/lib/shared/dependencies";
 import { Integer, type NonEmptyString } from "@/lib/shared/types";
 
-type LnPaymentHashSource = "paymentLnSpark" | "paymentLnZap" | "paymentLnNwc";
+type LnPaymentHashSource =
+	| "paymentLnSpark"
+	| "paymentLnZap"
+	| "paymentLnNwc"
+	| "paymentLnBridge";
 type LnPaymentHashClaimCreatedBy =
 	| "syncLnZapTransfersProcess"
 	| "syncSparkTransfersProcess"
 	| "syncNwcTransfersProcess"
+	| "syncBridgeTransfersProcess"
 	| "adminPaymentsDetail";
 
 const splitAmountByExpectedAllocation = (params: {
@@ -70,17 +75,33 @@ const findPaymentIdsByPaymentHash =
 									.where("paymentLnZap.paymentHash", "=", paymentHash),
 							),
 						)
-					: await deps.evolu.loadQuery(
-							createQuery((db) =>
-								db
-									.selectFrom("payment")
-									.innerJoin("paymentLnNwc", "paymentLnNwc.id", "payment.id")
-									.select(["payment.id as id"] as const)
-									.where("payment.isDeleted", "is not", sqliteTrue)
-									.where("paymentLnNwc.isDeleted", "is not", sqliteTrue)
-									.where("paymentLnNwc.paymentHash", "=", paymentHash),
-							),
-						);
+					: source === "paymentLnNwc"
+						? await deps.evolu.loadQuery(
+								createQuery((db) =>
+									db
+										.selectFrom("payment")
+										.innerJoin("paymentLnNwc", "paymentLnNwc.id", "payment.id")
+										.select(["payment.id as id"] as const)
+										.where("payment.isDeleted", "is not", sqliteTrue)
+										.where("paymentLnNwc.isDeleted", "is not", sqliteTrue)
+										.where("paymentLnNwc.paymentHash", "=", paymentHash),
+								),
+							)
+						: await deps.evolu.loadQuery(
+								createQuery((db) =>
+									db
+										.selectFrom("payment")
+										.innerJoin(
+											"paymentLnBridge",
+											"paymentLnBridge.id",
+											"payment.id",
+										)
+										.select(["payment.id as id"] as const)
+										.where("payment.isDeleted", "is not", sqliteTrue)
+										.where("paymentLnBridge.isDeleted", "is not", sqliteTrue)
+										.where("paymentLnBridge.paymentHash", "=", paymentHash),
+								),
+							);
 
 		return paymentRows.map((row) => row.id);
 	};
