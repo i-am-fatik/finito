@@ -8,8 +8,8 @@ import { useTranslation } from "react-i18next";
 import { hasDeviceAccountAtom } from "@/atoms/account";
 import { FinitoLogo } from "@/components/finito-logo";
 
-const createReturnToUrl = (pathname: string, query: string) =>
-	`${pathname}${query !== "" ? `?${query}` : ""}`;
+const createReturnToUrl = (pathname: string, query: string, hash: string) =>
+	`${pathname}${query !== "" ? `?${query}` : ""}${hash}`;
 
 const createOnboardingUrl = (returnTo: string) => {
 	const params = new URLSearchParams();
@@ -28,7 +28,11 @@ export default function Loading() {
 
 	useEffect(() => {
 		if (!accountState && !pathname.startsWith("/onboarding")) {
-			const returnTo = createReturnToUrl(pathname, searchParams.toString());
+			const returnTo = createReturnToUrl(
+				pathname,
+				searchParams.toString(),
+				window.location.hash,
+			);
 			router.replace(createOnboardingUrl(returnTo) as never);
 		}
 	}, [accountState, pathname, searchParams, router.replace]);
