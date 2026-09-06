@@ -1,5 +1,9 @@
 import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
-import { preimageMatchesHash, ThunderBridge } from "thunder-bridge";
+import {
+	GatewayCheatError,
+	preimageMatchesHash,
+	ThunderBridge,
+} from "thunder-bridge";
 import type { BackgroundProcess } from "@/lib/background/service";
 import { createQuery } from "@/lib/evolu";
 import { PaymentWatchingStopReason } from "@/lib/evolu/model/payment-watching-state";
@@ -172,6 +176,14 @@ export const syncBridgeTransfersProcess: BackgroundProcess = {
 						}
 					} catch (error) {
 						if (controller.signal.aborted) {
+							return;
+						}
+						if (error instanceof GatewayCheatError) {
+							stopWatching(payment.id, PaymentWatchingStopReason.Error);
+							report(
+								"error",
+								`The gateway's answer on payment ${payment.id} failed verification: ${error.message}`,
+							);
 							return;
 						}
 						report(

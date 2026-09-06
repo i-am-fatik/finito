@@ -268,7 +268,7 @@ describe("createPaymentWithDefaultMethods", () => {
 		expect(gatewayConstructions).toEqual([
 			{
 				url: gatewayUrl,
-				options: { token: gatewayToken, verify: false },
+				options: { token: gatewayToken },
 			},
 		]);
 		expect(gatewayCreatePaymentParams).toEqual([
@@ -382,7 +382,7 @@ describe("createPaymentWithDefaultMethods", () => {
 		await run();
 
 		expect(gatewayConstructions).toEqual([
-			{ url: gatewayUrl, options: { token: undefined, verify: false } },
+			{ url: gatewayUrl, options: { token: undefined } },
 		]);
 	});
 });

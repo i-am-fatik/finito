@@ -793,7 +793,6 @@ const createBridgePayment =
 
 		const gateway = new ThunderBridge(account.gatewayUrl, {
 			token: account.gatewayToken ?? undefined,
-			verify: false,
 		});
 		const payment = await gateway.createPayment({
 			lnAddresses: [account.lud16],

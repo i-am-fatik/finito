@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest, mock } from "bun:test";
 import { createIdFromString } from "@evolu/common";
+import { GatewayCheatError } from "thunder-bridge";
 import type { NotificationUI } from "@/hooks/use-background-processes";
 import type { BackgroundProcess } from "@/lib/background/service";
 import { PaymentWatchingStopReason } from "@/lib/evolu/model/payment-watching-state";
@@ -298,6 +299,38 @@ describe("syncBridgeTransfersProcess", () => {
 
 		expect(waitCalls).toHaveLength(2);
 		expect(writesTo(upserts, "transaction")).toHaveLength(1);
+	});
+
+	it("stops with an error and does not ask again when the gateway's answer fails verification", async () => {
+		jest.useFakeTimers();
+		outcomes = [new GatewayCheatError("preimage_mismatch", gatewayPaymentId)];
+		const { run, upserts, updates, reports } = setupProcess();
+
+		const stop = await run();
+		await flushPendingWork();
+
+		expect(writesTo(upserts, "transaction")).toHaveLength(0);
+		expect(updates).toEqual([
+			{
+				table: "paymentWatchingState",
+				values: {
+					id: paymentId,
+					stoppedAt: expect.any(Number),
+					stopReason: PaymentWatchingStopReason.Error,
+				},
+			},
+		]);
+		expect(reports.at(-1)).toMatchObject({
+			type: "error",
+			description: expect.stringContaining("failed verification"),
+		});
+
+		jest.advanceTimersByTime(retryDelayMs);
+		await flushPendingWork();
+		stop();
+		jest.useRealTimers();
+
+		expect(waitCalls).toHaveLength(1);
 	});
 
 	it("follows a watched payment only once", async () => {
