@@ -30,7 +30,12 @@ type GatewayOutcome = {
 	preimage: string | null;
 };
 
-let waitCalls: Array<{ paymentId: string; signal: AbortSignal }> = [];
+let waitCalls: Array<{
+	paymentId: string;
+	signal: AbortSignal;
+	gatewayUrl: string;
+	gatewayToken: string | undefined;
+}> = [];
 let outcomes: Array<GatewayOutcome | Error> = [];
 
 class FakeThunderBridge {
@@ -40,7 +45,12 @@ class FakeThunderBridge {
 	) {}
 
 	waitForPayment(id: string, options: { signal: AbortSignal }) {
-		waitCalls.push({ paymentId: id, signal: options.signal });
+		waitCalls.push({
+			paymentId: id,
+			signal: options.signal,
+			gatewayUrl: this.url,
+			gatewayToken: this.options.token,
+		});
 		const outcome = outcomes.shift();
 
 		if (outcome === undefined) {
@@ -66,12 +76,19 @@ const flushPendingWork = async () => {
 	}
 };
 
-const setupProcess = (params?: { expiresAtSec?: number }) => {
-	const watchedPayments: EvoluRow[] = [
+const setupProcess = (params?: {
+	expiresAtSec?: number;
+	lnInvoice?: string;
+	rows?: EvoluRow[];
+	claimedPaymentIds?: string[];
+	expectedTipAmount?: number | null;
+	expectedProductAmount?: number;
+}) => {
+	const watchedPayments: EvoluRow[] = params?.rows ?? [
 		{
 			id: paymentId,
 			accountId,
-			lnInvoice: invoice.lnInvoice,
+			lnInvoice: params?.lnInvoice ?? invoice.lnInvoice,
 			paymentHash: invoice.paymentHash,
 			gatewayPaymentId,
 			expirationIn: params?.expiresAtSec ?? invoice.expiresAtSec,
@@ -86,10 +103,15 @@ const setupProcess = (params?: { expiresAtSec?: number }) => {
 				return watchedPayments;
 			}
 			if (query.includes("expectedProductAmount")) {
-				return [{ tipAmount: null, expectedProductAmount: amountSats }];
+				return [
+					{
+						tipAmount: params?.expectedTipAmount ?? null,
+						expectedProductAmount: params?.expectedProductAmount ?? amountSats,
+					},
+				];
 			}
 			if (query.includes("paymentLnBridge")) {
-				return [{ id: paymentId }];
+				return (params?.claimedPaymentIds ?? [paymentId]).map((id) => ({ id }));
 			}
 			return [];
 		},
@@ -291,12 +313,14 @@ describe("syncBridgeTransfersProcess", () => {
 
 		const stop = await run();
 		await flushPendingWork();
+		expect(waitCalls[0]?.signal.aborted).toBe(false);
+
 		watchedPayments.length = 0;
 		notifyQueryListeners();
 		await flushPendingWork();
-		stop();
 
 		expect(waitCalls[0]?.signal.aborted).toBe(true);
+		stop();
 	});
 
 	it("aborts every wait when the process is stopped", async () => {
@@ -304,8 +328,192 @@ describe("syncBridgeTransfersProcess", () => {
 
 		const stop = await run();
 		await flushPendingWork();
+		expect(waitCalls[0]?.signal.aborted).toBe(false);
+
 		stop();
 
 		expect(waitCalls[0]?.signal.aborted).toBe(true);
+	});
+
+	it("splits the settled amount into the product and the tip the payment expected", async () => {
+		outcomes = [{ status: "paid", preimage: invoice.preimage }];
+		const { run, upserts } = setupProcess({
+			expectedProductAmount: 500,
+			expectedTipAmount: 100,
+		});
+
+		const stop = await run();
+		await flushPendingWork();
+		stop();
+
+		expect(
+			Object.fromEntries(
+				writesTo(upserts, "reconciliationClaimAllocation").map((write) => [
+					write.values.componentType,
+					write.values.amount,
+				]),
+			),
+		).toEqual({ product: 500, tip: 100, overpayment: 0 });
+	});
+
+	it("claims every payment that shares the settled hash", async () => {
+		const secondPaymentId = createIdFromString("secondBridgePayment");
+		outcomes = [{ status: "paid", preimage: invoice.preimage }];
+		const { run, upserts } = setupProcess({
+			claimedPaymentIds: [paymentId, secondPaymentId],
+		});
+
+		const stop = await run();
+		await flushPendingWork();
+		stop();
+
+		expect(
+			writesTo(upserts, "reconciliationClaim").map(
+				(write) => write.values.entityId,
+			),
+		).toEqual([paymentId, secondPaymentId]);
+	});
+
+	it("counts each settled payment in the operator's notification", async () => {
+		const secondPaymentId = createIdFromString("secondBridgePayment");
+		outcomes = [
+			{ status: "paid", preimage: invoice.preimage },
+			{ status: "paid", preimage: invoice.preimage },
+		];
+		const { run, reports } = setupProcess({
+			rows: [
+				{
+					id: paymentId,
+					accountId,
+					lnInvoice: invoice.lnInvoice,
+					paymentHash: invoice.paymentHash,
+					gatewayPaymentId,
+					expirationIn: invoice.expiresAtSec,
+					gatewayUrl: "https://gateway.invalid",
+					gatewayToken: "invented-gateway-token",
+				},
+				{
+					id: secondPaymentId,
+					accountId,
+					lnInvoice: invoice.lnInvoice,
+					paymentHash: invoice.paymentHash,
+					gatewayPaymentId: "second-gateway-payment-id",
+					expirationIn: invoice.expiresAtSec,
+					gatewayUrl: "https://other-gateway.invalid",
+					gatewayToken: null,
+				},
+			],
+		});
+
+		const stop = await run();
+		await flushPendingWork();
+		stop();
+
+		expect(
+			reports
+				.map((report) => report.description)
+				.filter((description) => description.startsWith("Verified")),
+		).toEqual([
+			"Verified 1 gateway payment(s).",
+			"Verified 2 gateway payment(s).",
+		]);
+	});
+
+	it("asks each payment's own gateway with that payment's own token", async () => {
+		const secondPaymentId = createIdFromString("secondBridgePayment");
+		const { run } = setupProcess({
+			rows: [
+				{
+					id: paymentId,
+					accountId,
+					lnInvoice: invoice.lnInvoice,
+					paymentHash: invoice.paymentHash,
+					gatewayPaymentId,
+					expirationIn: invoice.expiresAtSec,
+					gatewayUrl: "https://gateway.invalid",
+					gatewayToken: "invented-gateway-token",
+				},
+				{
+					id: secondPaymentId,
+					accountId,
+					lnInvoice: invoice.lnInvoice,
+					paymentHash: invoice.paymentHash,
+					gatewayPaymentId: "second-gateway-payment-id",
+					expirationIn: invoice.expiresAtSec,
+					gatewayUrl: "https://other-gateway.invalid",
+					gatewayToken: null,
+				},
+			],
+		});
+
+		const stop = await run();
+		await flushPendingWork();
+		stop();
+
+		expect(waitCalls).toEqual([
+			{
+				paymentId: gatewayPaymentId,
+				signal: expect.any(AbortSignal),
+				gatewayUrl: "https://gateway.invalid",
+				gatewayToken: "invented-gateway-token",
+			},
+			{
+				paymentId: "second-gateway-payment-id",
+				signal: expect.any(AbortSignal),
+				gatewayUrl: "https://other-gateway.invalid",
+				gatewayToken: undefined,
+			},
+		]);
+	});
+
+	it("stops watching an invoice that expires while the gateway is being retried", async () => {
+		jest.useFakeTimers();
+		outcomes = [new Error("connection refused")];
+		const { run, updates } = setupProcess({
+			expiresAtSec: Math.floor(Date.now() / 1000) + 10,
+		});
+
+		const stop = await run();
+		await flushPendingWork();
+		expect(updates).toHaveLength(0);
+
+		jest.advanceTimersByTime(retryDelayMs);
+		await flushPendingWork();
+		stop();
+		jest.useRealTimers();
+
+		expect(waitCalls).toHaveLength(1);
+		expect(updates[0]?.values.stopReason).toBe(
+			PaymentWatchingStopReason.Timeout,
+		);
+	});
+
+	it("misreports a settled payment it cannot read an amount from as an unreachable gateway, and keeps asking", async () => {
+		jest.useFakeTimers();
+		const amountless = testLightningInvoice({
+			amountSats: null,
+			createdAtSec: Math.floor(Date.now() / 1000),
+			expirySeconds: 3600,
+			preimageSeed,
+		});
+		outcomes = [{ status: "paid", preimage: amountless.preimage }];
+		const { run, upserts, updates, reports } = setupProcess({
+			lnInvoice: amountless.lnInvoice,
+		});
+
+		const stop = await run();
+		await flushPendingWork();
+
+		expect(writesTo(upserts, "transaction")).toHaveLength(0);
+		expect(updates).toHaveLength(0);
+		expect(reports.at(-1)?.type).toBe("error");
+		expect(reports.at(-1)?.description).toContain("Gateway unreachable");
+
+		jest.advanceTimersByTime(retryDelayMs);
+		await flushPendingWork();
+		stop();
+		jest.useRealTimers();
+
+		expect(waitCalls).toHaveLength(2);
 	});
 });

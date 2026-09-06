@@ -42,7 +42,7 @@ const taggedField = (tag: number, dataWords: number[]) => [
 ];
 
 export const testLightningInvoice = (params: {
-	amountSats: number;
+	amountSats: number | null;
 	createdAtSec: number;
 	expirySeconds: number;
 	preimageSeed: string;
@@ -63,7 +63,9 @@ export const testLightningInvoice = (params: {
 
 	return {
 		lnInvoice: bech32.encode(
-			`lnbc${params.amountSats * nanoBtcPerSat}n`,
+			params.amountSats === null
+				? "lnbc"
+				: `lnbc${params.amountSats * nanoBtcPerSat}n`,
 			words,
 			noChecksumLimit,
 		),

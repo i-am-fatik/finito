@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { createIdFromString } from "@evolu/common";
 import * as ndk from "@nostr-dev-kit/ndk";
 import { PaymentDefaultMethodType } from "@/lib/evolu/model/payment-default-method";
+import type { NdkDep } from "@/lib/shared/dependencies";
 import { Currency, NonNegativeInteger } from "@/lib/shared/types";
 import { testLightningInvoice } from "@/lib/test-support/bolt11";
 import { type EvoluRow, setupEvolu, writesTo } from "@/lib/test-support/evolu";
@@ -43,6 +44,7 @@ type GatewayCreatePaymentParams = {
 
 let gatewayConstructions: GatewayConstruction[] = [];
 let gatewayCreatePaymentParams: GatewayCreatePaymentParams[] = [];
+let gatewayRefusal: Error | null = null;
 
 class FakeThunderBridge {
 	constructor(url: string, options: GatewayConstruction["options"]) {
@@ -52,10 +54,12 @@ class FakeThunderBridge {
 	createPayment(params: GatewayCreatePaymentParams) {
 		gatewayCreatePaymentParams.push(params);
 
-		return Promise.resolve({
-			id: gatewayPaymentId,
-			bolt11: bridgeInvoice.lnInvoice,
-		});
+		return gatewayRefusal === null
+			? Promise.resolve({
+					id: gatewayPaymentId,
+					bolt11: bridgeInvoice.lnInvoice,
+				})
+			: Promise.reject(gatewayRefusal);
 	}
 }
 
@@ -122,8 +126,13 @@ const lud16DefaultMethod = (accountLud16GatewayUrl: string | null) => ({
 	accountLud16GatewayUrl,
 });
 
-const setupPayment = (params: { gatewayUrl: string | null }) => {
-	const bridgeAccountRows: EvoluRow[] = [
+const setupPayment = (params: {
+	gatewayUrl: string | null;
+	bridgeAccountRows?: EvoluRow[];
+	tipAmount?: number | null;
+	amountInBtc?: number | null;
+}) => {
+	const bridgeAccountRows: EvoluRow[] = params.bridgeAccountRows ?? [
 		{
 			_tag: "accountLud16",
 			lud16,
@@ -150,8 +159,9 @@ const setupPayment = (params: { gatewayUrl: string | null }) => {
 	const run = () =>
 		createPaymentWithDefaultMethods({
 			evolu: evoluFake.evolu,
-			// biome-ignore lint/suspicious/noExplicitAny: the NDK boundary is faked
-			ndk: new FakeNdk({ explicitRelayUrls: ["wss://relay.invalid"] }) as any,
+			ndk: new FakeNdk({
+				explicitRelayUrls: ["wss://relay.invalid"],
+			}) as unknown as NdkDep["ndk"],
 		})({
 			payment: {
 				id: paymentId,
@@ -159,30 +169,55 @@ const setupPayment = (params: { gatewayUrl: string | null }) => {
 				currency: Currency.CZK,
 			},
 			totalAmount: NonNegativeInteger(15000),
-			tipAmount: null,
-			amountInBtc: NonNegativeInteger(amountSats),
+			tipAmount:
+				params.tipAmount === undefined || params.tipAmount === null
+					? null
+					: NonNegativeInteger(params.tipAmount),
+			amountInBtc:
+				params.amountInBtc === null
+					? undefined
+					: NonNegativeInteger(params.amountInBtc ?? amountSats),
 		});
 
 	return { ...evoluFake, run };
 };
 
+const answerLnurlWith = (invoice: string) => (url: string) =>
+	url.includes("/.well-known/lnurlp/")
+		? {
+				callback: "https://wallet.invalid/lnurlp/callback",
+				nostrPubkey: "invented-wallet-pubkey",
+			}
+		: { pr: invoice };
+
+const originalFetch = globalThis.fetch;
+let answerFetch: ((url: string) => unknown) | null = null;
+let refusedFetchUrls: string[] = [];
+
 beforeEach(() => {
 	gatewayConstructions = [];
 	gatewayCreatePaymentParams = [];
+	gatewayRefusal = null;
+	answerFetch = null;
+	refusedFetchUrls = [];
 
-	globalThis.fetch = (async (input: URL | RequestInfo) => {
+	globalThis.fetch = ((input: URL | RequestInfo) => {
 		const url = String(input);
+		const answer = answerFetch;
 
-		return {
-			json: async () =>
-				url.includes("/.well-known/lnurlp/")
-					? {
-							callback: "https://wallet.invalid/lnurlp/callback",
-							nostrPubkey: "invented-wallet-pubkey",
-						}
-					: { pr: zapInvoice.lnInvoice },
-		};
+		if (answer === null) {
+			refusedFetchUrls.push(url);
+			return Promise.reject(
+				new Error(`The test made no network answer available for ${url}`),
+			);
+		}
+
+		return Promise.resolve({ json: () => Promise.resolve(answer(url)) });
 	}) as typeof fetch;
+});
+
+afterEach(() => {
+	globalThis.fetch = originalFetch;
 });
 
 describe("createPaymentWithDefaultMethods", () => {
@@ -209,6 +244,7 @@ describe("createPaymentWithDefaultMethods", () => {
 	});
 
 	it("routes a lud16 account without a gateway to paymentLnZap", async () => {
+		answerFetch = answerLnurlWith(zapInvoice.lnInvoice);
 		const { run, upserts } = setupPayment({ gatewayUrl: null });
 
 		await run();
@@ -257,6 +293,96 @@ describe("createPaymentWithDefaultMethods", () => {
 					stopReason: null,
 				},
 			},
+		]);
+	});
+
+	it("reaches the gateway without touching the network itself", async () => {
+		const { run } = setupPayment({ gatewayUrl });
+
+		await run();
+
+		expect(refusedFetchUrls).toEqual([]);
+	});
+
+	it("writes the payment itself with the tip folded into the total", async () => {
+		const { run, upserts } = setupPayment({ gatewayUrl, tipAmount: 2000 });
+
+		await run();
+
+		expect(writesTo(upserts, "payment")).toEqual([
+			{
+				table: "payment",
+				values: {
+					id: paymentId,
+					deviceId: null,
+					currency: Currency.CZK,
+					direction: "incoming",
+					tipAmount: 2000,
+					totalAmount: 17000,
+				},
+			},
+		]);
+	});
+
+	it("refuses a lightning method without an amount in bitcoin", async () => {
+		const { run, upserts } = setupPayment({ gatewayUrl, amountInBtc: null });
+
+		await expect(run()).rejects.toThrow(
+			"BTC amount is required for BTC LN payment methods.",
+		);
+
+		expect(upserts).toHaveLength(0);
+	});
+
+	it("writes nothing at all when the gateway refuses to mint", async () => {
+		gatewayRefusal = new Error("no wallet available");
+		const { run, upserts } = setupPayment({ gatewayUrl });
+
+		await expect(run()).rejects.toThrow("no wallet available");
+
+		expect(upserts).toHaveLength(0);
+	});
+
+	it("leaves a bridge payment watched with no invoice when the account cannot be read, so nothing can ever settle it", async () => {
+		const { run, upserts } = setupPayment({
+			gatewayUrl,
+			bridgeAccountRows: [],
+		});
+
+		await run();
+
+		expect(gatewayConstructions).toHaveLength(0);
+		expect(writesTo(upserts, "paymentLnBridge")).toHaveLength(0);
+		expect(writesTo(upserts, "payment")).toHaveLength(1);
+		expect(writesTo(upserts, "paymentWatchingState")).toHaveLength(1);
+	});
+
+	it("does not mint through the gateway for an account that is not a lightning address", async () => {
+		const { run, upserts } = setupPayment({
+			gatewayUrl,
+			bridgeAccountRows: [
+				{ _tag: "accountSpark", lud16, gatewayUrl, gatewayToken },
+			],
+		});
+
+		await run();
+
+		expect(gatewayConstructions).toHaveLength(0);
+		expect(writesTo(upserts, "paymentLnBridge")).toHaveLength(0);
+	});
+
+	it("sends no token to a gateway that was configured without one", async () => {
+		const { run } = setupPayment({
+			gatewayUrl,
+			bridgeAccountRows: [
+				{ _tag: "accountLud16", lud16, gatewayUrl, gatewayToken: null },
+			],
+		});
+
+		await run();
+
+		expect(gatewayConstructions).toEqual([
+			{ url: gatewayUrl, options: { token: undefined, verify: false } },
 		]);
 	});
 });

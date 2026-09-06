@@ -10,12 +10,15 @@ export type EvoluRow = Record<string, unknown>;
 export const writesTo = (writes: ReadonlyArray<EvoluWrite>, table: string) =>
 	writes.filter((write) => write.table === table);
 
+export const sqlOf = (query: string) => JSON.parse(query)[0] as string;
+
 export const setupEvolu = (params?: {
 	rowsFor?: (query: string) => ReadonlyArray<EvoluRow>;
 }) => {
 	const upserts: EvoluWrite[] = [];
 	const updates: EvoluWrite[] = [];
 	const inserts: EvoluWrite[] = [];
+	const loadedQueries: string[] = [];
 	const queryListeners = new Set<() => void>();
 	const rowsFor = params?.rowsFor ?? (() => []);
 
@@ -26,7 +29,10 @@ export const setupEvolu = (params?: {
 		};
 
 	const evolu = {
-		loadQuery: (query: string) => Promise.resolve(rowsFor(query)),
+		loadQuery: (query: string) => {
+			loadedQueries.push(query);
+			return Promise.resolve(rowsFor(query));
+		},
 		getQueryRows: (query: string) => rowsFor(query),
 		subscribeQuery: () => (listener: () => void) => {
 			queryListeners.add(listener);
@@ -44,6 +50,7 @@ export const setupEvolu = (params?: {
 		upserts,
 		updates,
 		inserts,
+		loadedQueries,
 		notifyQueryListeners: () => {
 			for (const listener of queryListeners) {
 				listener();
