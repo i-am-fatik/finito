@@ -31,6 +31,14 @@ const readLanguageFromStorage = () => {
 	return DEFAULT_LANGUAGE;
 };
 
+const adoptLatestResources = () => {
+	for (const [language, namespaces] of Object.entries(resources)) {
+		for (const [namespace, translations] of Object.entries(namespaces)) {
+			i18next.addResourceBundle(language, namespace, translations, true, true);
+		}
+	}
+};
+
 if (!i18next.isInitialized) {
 	void i18next.use(initReactI18next).init({
 		resources,
@@ -45,6 +53,8 @@ if (!i18next.isInitialized) {
 			useSuspense: false,
 		},
 	});
+} else {
+	adoptLatestResources();
 }
 
 export const ensureClientLanguage = () => {
