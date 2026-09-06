@@ -45,7 +45,8 @@ mock.module("@/hooks/use-async-route-push", () => ({
 
 mock.module("@/hooks/use-bill", () => ({
 	useBill: () => ({
-		deleteBill: () => {},
+		deleteBill: () => null,
+		restoreBill: () => {},
 		moveItemsToBill: () => undefined,
 		setBillCurrency: () => {},
 		setBillRate: () => {},

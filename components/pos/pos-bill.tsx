@@ -29,6 +29,7 @@ import {
 	useTransition,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { z } from "zod";
 import { accountAtom } from "@/atoms/account";
 import { ComboboxDefault } from "@/components/combobox/default";
@@ -206,6 +207,38 @@ const createPosPayment = async (props: {
 
 const getBillTargetLabel = (bill: Pos["bills"][Id]) =>
 	bill.table?.label ?? bill.label ?? `#${bill.displayId}`;
+
+const posBillHref = (billId: Id) =>
+	`/admin/pos?id=${encodeURIComponent(billId)}`;
+
+const useSettlePaidBill = () => {
+	const { t } = useTranslation();
+	const evolu = useEvolu();
+	const router = useRouter();
+	const { deleteBill, restoreBill } = useBill();
+
+	return (props: { billId: Id; paymentId: Id; label: string }) => {
+		const closedBill = deleteBill(props.billId);
+		if (closedBill === null) {
+			return;
+		}
+
+		toast(t("pos:bill.paid", { label: props.label }), {
+			duration: 15000,
+			action: {
+				label: t("pos:bill.undoPayment"),
+				onClick: () => {
+					restoreBill(closedBill);
+					evolu.update("payment", {
+						id: props.paymentId,
+						isDeleted: sqliteTrue,
+					});
+					router.push(posBillHref(props.billId) as never);
+				},
+			},
+		});
+	};
+};
 
 const Item: React.FC<{
 	item: PosBillItem;
@@ -529,7 +562,7 @@ const PayButton: FC<{
 	const { ndk } = useNostr();
 	const evolu = useEvolu();
 	const [isSaving, startTransition] = useTransition();
-	const { deleteBill } = useBill();
+	const settlePaidBill = useSettlePaidBill();
 	const asyncRoutePush = useAsyncRoutePush();
 	const account = useAtomValue(accountAtom);
 
@@ -553,7 +586,11 @@ const PayButton: FC<{
 					asyncRoutePush(
 						`/admin/payments/detail?id=${encodeURIComponent(id)}&focus=true`,
 					).then(() => {
-						deleteBill(props.billId);
+						settlePaidBill({
+							billId: props.billId,
+							paymentId: id,
+							label: getBillTargetLabel(props.bill),
+						});
 					});
 				});
 			}}
@@ -589,8 +626,8 @@ export const PosBill: React.FC<{
 	const { ndk } = useNostr();
 	const asyncRoutePush = useAsyncRoutePush();
 	const account = useAtomValue(accountAtom);
-	const { deleteBill, moveItemsToBill, setBillCurrency, setBillRate } =
-		useBill();
+	const { moveItemsToBill, setBillCurrency, setBillRate } = useBill();
+	const settlePaidBill = useSettlePaidBill();
 	const billId = props.billId;
 	const variant = searchParams.get("variant");
 	const [isSplitMode, setIsSplitMode] = useState(false);
@@ -891,7 +928,11 @@ export const PosBill: React.FC<{
 				asyncRoutePush(
 					`/admin/payments/detail?id=${encodeURIComponent(paymentId)}&focus=true`,
 				).then(() => {
-					deleteBill(billId);
+					settlePaidBill({
+						billId,
+						paymentId,
+						label: getBillTargetLabel(bill),
+					});
 				});
 
 				return;
@@ -917,7 +958,11 @@ export const PosBill: React.FC<{
 			asyncRoutePush(
 				`/admin/payments/detail?id=${encodeURIComponent(paymentId)}&focus=true`,
 			).then(() => {
-				deleteBill(targetBillId);
+				settlePaidBill({
+					billId: targetBillId,
+					paymentId,
+					label: getBillTargetLabel(bill),
+				});
 			});
 		});
 	};

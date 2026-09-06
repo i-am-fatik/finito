@@ -4,6 +4,8 @@ const locale = {
     "each": "each",
     "noItemsInCart": "No items in cart",
     "pay": "Pay",
+    "paid": "Bill {{label}} paid",
+    "undoPayment": "Undo",
     "rate": "Rate:",
     "selectTable": "Select a table",
     "split": {

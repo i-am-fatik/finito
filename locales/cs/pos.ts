@@ -4,6 +4,8 @@ const locale = {
     "each": "za kus",
     "noItemsInCart": "Žádné položky v košíku",
     "pay": "Zaplatit",
+    "paid": "Účet {{label}} zaplacen",
+    "undoPayment": "Vrátit",
     "rate": "Kurz:",
     "selectTable": "Vyberte stůl",
     "split": {

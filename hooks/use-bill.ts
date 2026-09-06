@@ -1,4 +1,4 @@
-import { createIdFromString, sqliteTrue } from "@evolu/common";
+import { createIdFromString, sqliteFalse, sqliteTrue } from "@evolu/common";
 import { useAtomValue } from "jotai";
 import { accountAtom } from "@/atoms/account";
 import { useEvolu } from "@/hooks/use-evolu";
@@ -13,6 +13,11 @@ import {
 	PositiveInteger,
 	PositiveNumber,
 } from "@/lib/shared/types";
+
+export type ClosedBill = {
+	billId: Id;
+	rateIds: ReadonlyArray<Id>;
+};
 
 export const useBill = () => {
 	const account = useAtomValue(accountAtom);
@@ -87,10 +92,10 @@ export const useBill = () => {
 	};
 
 	return {
-		deleteBill: (billId: Id) => {
+		deleteBill: (billId: Id): ClosedBill | null => {
 			const bill = billRows.find((bill) => bill.id === billId);
 			if (bill === undefined) {
-				return;
+				return null;
 			}
 
 			evolu.update("posBill", {
@@ -102,6 +107,21 @@ export const useBill = () => {
 				evolu.update("posBillRate", {
 					id: rate.id,
 					isDeleted: sqliteTrue,
+				});
+			}
+
+			return { billId, rateIds: bill.rates.map((rate) => rate.id) };
+		},
+		restoreBill: (closedBill: ClosedBill) => {
+			evolu.update("posBill", {
+				id: closedBill.billId,
+				isDeleted: sqliteFalse,
+			});
+
+			for (const rateId of closedBill.rateIds) {
+				evolu.update("posBillRate", {
+					id: rateId,
+					isDeleted: sqliteFalse,
 				});
 			}
 		},
