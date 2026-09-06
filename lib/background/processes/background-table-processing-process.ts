@@ -181,6 +181,8 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 						] as const,
 				)
 				.where("posBill.isDeleted", "is not", sqliteTrue)
+				.where("posBill.closedAt", "is", null)
+				.where("posBill.paymentId", "is", null)
 				.where("posBill.currency", "is not", null)
 				.$narrowType<{
 					currency: KyselyNotNull;
