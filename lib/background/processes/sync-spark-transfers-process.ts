@@ -233,25 +233,31 @@ export const syncSparkTransfersProcess: BackgroundProcess = {
 
 						const latestOccurredAt =
 							await findLatestSparkTransactionOccurredAtByAccountId(account.id);
-						const createdAfter =
+						const syncedThrough =
 							latestOccurredAt === null
-								? undefined
-								: new Date(
-										Math.max(0, latestOccurredAt - transferHistoryOverlapMs),
-									);
+								? null
+								: Math.max(0, latestOccurredAt - transferHistoryOverlapMs);
+
+						const isAlreadySynced = (walletTransfer: WalletTransfer) =>
+							syncedThrough !== null &&
+							(walletTransfer.updatedTime?.getTime() ?? Date.now()) <=
+								syncedThrough;
 
 						let offset = 0;
 						while (true) {
 							const { transfers } = await wallet.getTransfers(
 								transferHistoryPageSize,
 								offset,
-								createdAfter,
 							);
 							if (transfers.length === 0) {
 								break;
 							}
 
 							for (const walletTransfer of transfers) {
+								if (isAlreadySynced(walletTransfer)) {
+									continue;
+								}
+
 								await upsertCompletedSparkTransfer({
 									accountId: account.id,
 									walletTransfer,
@@ -260,6 +266,9 @@ export const syncSparkTransfersProcess: BackgroundProcess = {
 
 							offset += transfers.length;
 							if (transfers.length < transferHistoryPageSize) {
+								break;
+							}
+							if (transfers.every(isAlreadySynced)) {
 								break;
 							}
 						}
