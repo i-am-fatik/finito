@@ -33,6 +33,7 @@ type AccountTag =
 	| "accountLud16"
 	| "accountSpark"
 	| "accountNwc"
+	| "accountThunderBridge"
 	| "accountCashRegister";
 
 const transactionSchema = z.object({
@@ -119,6 +120,11 @@ const createAccountTagLabel = (props: {
 	}
 	if (props.tag === "accountLud16") {
 		return props.t("transactions:form.transaction-form.tag.account-lud16");
+	}
+	if (props.tag === "accountThunderBridge") {
+		return props.t(
+			"transactions:form.transaction-form.tag.account-thunder-bridge",
+		);
 	}
 	if (props.tag === "accountSpark") {
 		return props.t("transactions:form.transaction-form.tag.account-spark");

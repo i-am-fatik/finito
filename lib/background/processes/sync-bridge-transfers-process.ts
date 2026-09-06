@@ -102,7 +102,7 @@ export const syncBridgeTransfersProcess: BackgroundProcess = {
 				props.evolu.upsert("transaction", {
 					id: transactionId,
 					accountId: payment.accountId,
-					_tag: "accountLud16",
+					_tag: "accountThunderBridge",
 					amount,
 					currency: Currency.BTC,
 					occurredAt: TimestampMs(Date.now()),
@@ -209,8 +209,8 @@ export const syncBridgeTransfersProcess: BackgroundProcess = {
 					"payment.id",
 				)
 				.innerJoin(
-					"accountLud16",
-					"accountLud16.id",
+					"accountThunderBridge",
+					"accountThunderBridge.id",
 					"paymentLnBridge.accountId",
 				)
 				.select([
@@ -220,16 +220,16 @@ export const syncBridgeTransfersProcess: BackgroundProcess = {
 					"paymentLnBridge.paymentHash as paymentHash",
 					"paymentLnBridge.gatewayPaymentId as gatewayPaymentId",
 					"paymentLnBridge.expirationIn as expirationIn",
-					"accountLud16.gatewayUrl as gatewayUrl",
-					"accountLud16.gatewayToken as gatewayToken",
+					"accountThunderBridge.gatewayUrl as gatewayUrl",
+					"accountThunderBridge.gatewayToken as gatewayToken",
 				] as const)
 				.where("payment.isDeleted", "is not", sqliteTrue)
 				.where("paymentLnBridge.isDeleted", "is not", sqliteTrue)
 				.where("paymentWatchingState.isDeleted", "is not", sqliteTrue)
-				.where("accountLud16.isDeleted", "is not", sqliteTrue)
+				.where("accountThunderBridge.isDeleted", "is not", sqliteTrue)
 				.where("paymentWatchingState.verifiedAt", "is", null)
 				.where("paymentWatchingState.stoppedAt", "is", null)
-				.where("accountLud16.gatewayUrl", "is not", null),
+				.where("accountThunderBridge.gatewayUrl", "is not", null),
 		);
 
 		const unsubscribeWatchedPayments = subscribeToEvoluQuery(

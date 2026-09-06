@@ -35,6 +35,10 @@ type Task = {
 	accountLud16: {
 		lud16: string;
 	} | null;
+	accountThunderBridge: {
+		lud16: string | null;
+		iban: Iban | null;
+	} | null;
 	accountCashRegister: {
 		currency: Currency;
 	} | null;
@@ -69,17 +73,22 @@ const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 		header: createSortableHeader(t("accounts:table.columns.address")),
 		cell: ({ row }) => {
 			return row
-				? row.original.accountLud16
-					? row.original.accountLud16.lud16
-					: row.original.accountCashRegister
-						? "-"
-						: row.original.accountSpark
+				? row.original.accountThunderBridge
+					? (row.original.accountThunderBridge.lud16 ??
+						(row.original.accountThunderBridge.iban
+							? formatIban(row.original.accountThunderBridge.iban)
+							: "-"))
+					: row.original.accountLud16
+						? row.original.accountLud16.lud16
+						: row.original.accountCashRegister
 							? "-"
-							: row.original.accountNwc
+							: row.original.accountSpark
 								? "-"
-								: row.original.accountIban
-									? formatIban(row.original.accountIban.iban)
-									: "-"
+								: row.original.accountNwc
+									? "-"
+									: row.original.accountIban
+										? formatIban(row.original.accountIban.iban)
+										: "-"
 				: "-";
 		},
 	},
@@ -128,6 +137,7 @@ const sortingFields = {
 	name: "account.name",
 	_tag: "account._tag",
 	accountLud16: "account._tag",
+	accountThunderBridge: "account._tag",
 	accountCashRegister: "account._tag",
 	accountSpark: "account._tag",
 	accountNwc: "account._tag",
@@ -204,6 +214,22 @@ export function AccountsTable() {
 												lud16: KyselyNotNull;
 											}>(),
 									).as("accountLud16"),
+
+									evoluJsonObjectFrom(
+										eb
+											.selectFrom("accountThunderBridge")
+											.select([
+												"accountThunderBridge.lud16 as lud16",
+												"accountThunderBridge.iban as iban",
+											])
+											.whereRef("accountThunderBridge.id", "=", "account.id")
+											.where(
+												"accountThunderBridge.isDeleted",
+												"is not",
+												sqliteTrue,
+											)
+											.where("accountThunderBridge.gatewayUrl", "is not", null),
+									).as("accountThunderBridge"),
 
 									evoluJsonObjectFrom(
 										eb

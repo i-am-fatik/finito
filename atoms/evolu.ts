@@ -3,6 +3,7 @@ import { atom } from "jotai";
 import { accountAtom } from "@/atoms/account";
 import { createAppEvolu, createQuery } from "@/lib/evolu";
 import { defaultAccountIds } from "@/lib/evolu/default-accounts";
+import { moveGatewayAccountsToThunderBridge } from "@/lib/evolu/migrations/thunder-bridge-accounts";
 import { PaymentDefaultMethodType } from "@/lib/evolu/model/payment-default-method";
 import { FiatCurrency, NonEmptyString255 } from "@/lib/shared/types";
 
@@ -37,6 +38,8 @@ export const evoluAtom = atom(async (get) => {
 			throw new Error(
 				"App owner mnemonic is not set. Please create a new account.",
 			);
+
+		await moveGatewayAccountsToThunderBridge({ evolu });
 
 		// Create default accounts and payment methods
 		{

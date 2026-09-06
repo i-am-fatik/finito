@@ -289,6 +289,7 @@ export const AppSchema = {
 			"accountLud16",
 			"accountSpark",
 			"accountNwc",
+			"accountThunderBridge",
 			"accountCashRegister",
 		]),
 	},
@@ -302,6 +303,14 @@ export const AppSchema = {
 		lud16: EmailSchema,
 		gatewayUrl: HttpsUrlSchema.nullable(),
 		gatewayToken: NonEmptyString255Schema.nullable(),
+	},
+	accountThunderBridge: {
+		id: TableIdSchema,
+		gatewayUrl: HttpsUrlSchema,
+		gatewayToken: NonEmptyString255Schema.nullable(),
+		lud16: EmailSchema.nullable(),
+		iban: IbanSchema.nullable(),
+		fioReadToken: NonEmptyString255Schema.nullable(),
 	},
 	accountSpark: {
 		id: TableIdSchema,
@@ -326,6 +335,7 @@ export const AppSchema = {
 			"accountLud16",
 			"accountIban",
 			"accountNwc",
+			"accountThunderBridge",
 			"accountCashRegister",
 		]),
 		// Signed amount in the smallest unit of account currency.

@@ -160,7 +160,7 @@ describe("syncBridgeTransfersProcess", () => {
 		expect(writesTo(upserts, "transaction")[0]?.values).toMatchObject({
 			id: transactionId,
 			accountId,
-			_tag: "accountLud16",
+			_tag: "accountThunderBridge",
 			amount: amountSats,
 			currency: "BTC",
 		});

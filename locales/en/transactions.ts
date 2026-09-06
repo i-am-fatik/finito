@@ -67,6 +67,7 @@ const locale = {
       "tag": {
         "account-iban": "Bank account (IBAN)",
         "account-lud16": "BTC wallet (LUD16)",
+        "account-thunder-bridge": "ThunderBridge",
         "account-spark": "Spark Bitcoin L2",
         "account-nwc": "NWC protocol",
         "account-cash-register": "Cash register"

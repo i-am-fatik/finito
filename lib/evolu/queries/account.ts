@@ -50,6 +50,23 @@ export const createGetAccountQuery = (params: { id: Id }) =>
 						).as("accountLud16"),
 						evoluJsonObjectFrom(
 							eb
+								.selectFrom("accountThunderBridge")
+								.select([
+									"accountThunderBridge.gatewayUrl as gatewayUrl",
+									"accountThunderBridge.gatewayToken as gatewayToken",
+									"accountThunderBridge.lud16 as lud16",
+									"accountThunderBridge.iban as iban",
+									"accountThunderBridge.fioReadToken as fioReadToken",
+								])
+								.whereRef("accountThunderBridge.id", "=", "account.id")
+								.where("accountThunderBridge.isDeleted", "is not", sqliteTrue)
+								.where("accountThunderBridge.gatewayUrl", "is not", null)
+								.$narrowType<{
+									gatewayUrl: KyselyNotNull;
+								}>(),
+						).as("accountThunderBridge"),
+						evoluJsonObjectFrom(
+							eb
 								.selectFrom("accountSpark")
 								.select(["accountSpark.mnemonic as mnemonic"])
 								.whereRef("accountSpark.id", "=", "account.id")

@@ -15,6 +15,7 @@ export type PaymentDefaultMethodAccountTag =
 	| "accountLud16"
 	| "accountSpark"
 	| "accountNwc"
+	| "accountThunderBridge"
 	| "accountCashRegister";
 
 export const paymentDefaultMethodAllowedAccountTags = {
@@ -23,6 +24,7 @@ export const paymentDefaultMethodAllowedAccountTags = {
 		"accountLud16",
 		"accountSpark",
 		"accountNwc",
+		"accountThunderBridge",
 	],
 	[PaymentDefaultMethodType.BankTransferCZ]: ["accountIban"],
 } as const satisfies Record<

@@ -114,16 +114,16 @@ const { createPaymentWithDefaultMethods } = await import(
 	"@/lib/payment/service"
 );
 
-const lud16DefaultMethod = (accountLud16GatewayUrl: string | null) => ({
+const btcLnDefaultMethod = (gatewayUrl: string | null) => ({
 	id: createIdFromString("defaultMethod"),
 	type: PaymentDefaultMethodType.BtcLn,
 	accountId,
 	pausedAt: null,
 	accountName: "Wallet through gateway",
-	accountTag: "accountLud16",
+	accountTag: gatewayUrl === null ? "accountLud16" : "accountThunderBridge",
 	accountIban: null,
-	accountLud16: lud16,
-	accountLud16GatewayUrl,
+	accountLud16: gatewayUrl === null ? lud16 : null,
+	accountThunderBridgeLud16: gatewayUrl === null ? null : lud16,
 });
 
 const setupPayment = (params: {
@@ -134,7 +134,7 @@ const setupPayment = (params: {
 }) => {
 	const bridgeAccountRows: EvoluRow[] = params.bridgeAccountRows ?? [
 		{
-			_tag: "accountLud16",
+			_tag: "accountThunderBridge",
 			lud16,
 			gatewayUrl: params.gatewayUrl,
 			gatewayToken,
@@ -144,7 +144,7 @@ const setupPayment = (params: {
 	const evoluFake = setupEvolu({
 		rowsFor: (query) => {
 			if (query.includes("paymentDefaultMethod")) {
-				return [lud16DefaultMethod(params.gatewayUrl)];
+				return [btcLnDefaultMethod(params.gatewayUrl)];
 			}
 			if (query.includes("gatewayToken")) {
 				return bridgeAccountRows;
@@ -221,7 +221,7 @@ afterEach(() => {
 });
 
 describe("createPaymentWithDefaultMethods", () => {
-	it("routes a lud16 account with a gateway to paymentLnBridge", async () => {
+	it("routes a Thunder Bridge account to paymentLnBridge", async () => {
 		const { run, upserts } = setupPayment({ gatewayUrl });
 
 		await run();
@@ -343,39 +343,40 @@ describe("createPaymentWithDefaultMethods", () => {
 		expect(upserts).toHaveLength(0);
 	});
 
-	it("leaves a bridge payment watched with no invoice when the account cannot be read, so nothing can ever settle it", async () => {
+	it("says the account cannot be read instead of leaving a payment nothing can settle", async () => {
 		const { run, upserts } = setupPayment({
 			gatewayUrl,
 			bridgeAccountRows: [],
 		});
 
-		await run();
+		await expect(run()).rejects.toThrow(
+			"has no gateway and no lightning address",
+		);
 
 		expect(gatewayConstructions).toHaveLength(0);
-		expect(writesTo(upserts, "paymentLnBridge")).toHaveLength(0);
-		expect(writesTo(upserts, "payment")).toHaveLength(1);
-		expect(writesTo(upserts, "paymentWatchingState")).toHaveLength(1);
+		expect(upserts).toHaveLength(0);
 	});
 
-	it("does not mint through the gateway for an account that is not a lightning address", async () => {
-		const { run, upserts } = setupPayment({
+	it("refuses to mint through the gateway for an account that is not a Thunder Bridge one", async () => {
+		const { run } = setupPayment({
 			gatewayUrl,
 			bridgeAccountRows: [
 				{ _tag: "accountSpark", lud16, gatewayUrl, gatewayToken },
 			],
 		});
 
-		await run();
+		await expect(run()).rejects.toThrow(
+			"has no gateway and no lightning address",
+		);
 
 		expect(gatewayConstructions).toHaveLength(0);
-		expect(writesTo(upserts, "paymentLnBridge")).toHaveLength(0);
 	});
 
 	it("sends no token to a gateway that was configured without one", async () => {
 		const { run } = setupPayment({
 			gatewayUrl,
 			bridgeAccountRows: [
-				{ _tag: "accountLud16", lud16, gatewayUrl, gatewayToken: null },
+				{ _tag: "accountThunderBridge", lud16, gatewayUrl, gatewayToken: null },
 			],
 		});
 

@@ -60,6 +60,15 @@ export default function Page() {
 										gatewayToken: item.accountLud16.gatewayToken ?? "",
 									}
 								: undefined,
+							accountThunderBridge: item.accountThunderBridge
+								? {
+										gatewayUrl: item.accountThunderBridge.gatewayUrl,
+										gatewayToken: item.accountThunderBridge.gatewayToken ?? "",
+										lud16: item.accountThunderBridge.lud16 ?? "",
+										iban: item.accountThunderBridge.iban ?? "",
+										fioReadToken: item.accountThunderBridge.fioReadToken ?? "",
+									}
+								: undefined,
 							accountSpark: item.accountSpark
 								? {
 										...item.accountSpark,

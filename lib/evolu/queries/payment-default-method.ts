@@ -22,6 +22,11 @@ export const createPaymentDefaultMethodsQuery = (params?: {
 					.onRef("accountLud16.id", "=", "account.id")
 					.on("accountLud16.isDeleted", "is not", sqliteTrue),
 			)
+			.leftJoin("accountThunderBridge", (join) =>
+				join
+					.onRef("accountThunderBridge.id", "=", "account.id")
+					.on("accountThunderBridge.isDeleted", "is not", sqliteTrue),
+			)
 			.select([
 				"paymentDefaultMethod.id as id",
 				"paymentDefaultMethod.type as type",
@@ -32,6 +37,7 @@ export const createPaymentDefaultMethodsQuery = (params?: {
 				"accountIban.iban as accountIban",
 				"accountLud16.lud16 as accountLud16",
 				"accountLud16.gatewayUrl as accountLud16GatewayUrl",
+				"accountThunderBridge.lud16 as accountThunderBridgeLud16",
 			] as const)
 			.where("paymentDefaultMethod.isDeleted", "is not", sqliteTrue)
 			.where("paymentDefaultMethod.type", "is not", null)

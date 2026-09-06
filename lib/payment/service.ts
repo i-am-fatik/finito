@@ -560,17 +560,21 @@ export const createPaymentWithDefaultMethods =
 				if (amountInBtc === undefined) {
 					throw new Error("BTC amount is required for BTC LN payment methods.");
 				}
-				if (defaultMethod.accountLud16GatewayUrl) {
-					paymentLnBridge = {
-						accountId: defaultMethod.accountId,
-						amount: amountInBtc,
-					};
-				} else {
-					paymentLnZap = {
-						accountId: defaultMethod.accountId,
-						amount: amountInBtc,
-					};
+				paymentLnZap = {
+					accountId: defaultMethod.accountId,
+					amount: amountInBtc,
+				};
+				continue;
+			}
+
+			if (defaultMethod.accountTag === "accountThunderBridge") {
+				if (amountInBtc === undefined) {
+					throw new Error("BTC amount is required for BTC LN payment methods.");
 				}
+				paymentLnBridge = {
+					accountId: defaultMethod.accountId,
+					amount: amountInBtc,
+				};
 				continue;
 			}
 
@@ -762,18 +766,22 @@ const createBridgePayment =
 			createQuery((db) =>
 				db
 					.selectFrom("account")
-					.innerJoin("accountLud16", "accountLud16.id", "account.id")
+					.innerJoin(
+						"accountThunderBridge",
+						"accountThunderBridge.id",
+						"account.id",
+					)
 					.select([
 						"account._tag as _tag",
-						"accountLud16.lud16 as lud16",
-						"accountLud16.gatewayUrl as gatewayUrl",
-						"accountLud16.gatewayToken as gatewayToken",
+						"accountThunderBridge.lud16 as lud16",
+						"accountThunderBridge.gatewayUrl as gatewayUrl",
+						"accountThunderBridge.gatewayToken as gatewayToken",
 					] as const)
 					.where("account.isDeleted", "is not", sqliteTrue)
-					.where("accountLud16.isDeleted", "is not", sqliteTrue)
+					.where("accountThunderBridge.isDeleted", "is not", sqliteTrue)
 					.where("account.id", "=", params.accountId)
-					.where("accountLud16.lud16", "is not", null)
-					.where("accountLud16.gatewayUrl", "is not", null)
+					.where("accountThunderBridge.lud16", "is not", null)
+					.where("accountThunderBridge.gatewayUrl", "is not", null)
 					.$narrowType<{
 						_tag: KyselyNotNull;
 						lud16: KyselyNotNull;
@@ -783,12 +791,10 @@ const createBridgePayment =
 		);
 
 		const account = accounts[0];
-		if (account === undefined) {
-			return;
-		}
-
-		if (account._tag !== "accountLud16") {
-			return;
+		if (account === undefined || account._tag !== "accountThunderBridge") {
+			throw new Error(
+				"The Thunder Bridge account behind this payment method has no gateway and no lightning address.",
+			);
 		}
 
 		const gateway = new ThunderBridge(account.gatewayUrl, {

@@ -34,6 +34,7 @@ const locale = {
         "lud16": "LUD16",
         "gateway-url": "Gateway URL",
         "gateway-token": "Gateway token",
+        "fio-read-token": "Fio read token",
         "credentials": "Credentials",
         "seed": "Seed",
         "mnemonic": "Mnemonic"
@@ -43,7 +44,16 @@ const locale = {
         "account-lud16": "BTC wallet (LUD16)",
         "account-nwc": "NWC (Nostr Wallet Connect)",
         "account-spark": "Spark Bitcoin L2",
+        "account-thunder-bridge": "ThunderBridge",
         "account-cash-register": "Cash register"
+      },
+      "gateway": {
+        "ok": "The gateway answered, payments will go to {{address}}.",
+        "unauthorized": "The gateway refused the token. Check the gateway token.",
+        "unreachable": "The gateway could not be reached. Check the gateway URL.",
+        "noWallet": "The gateway took the token but no wallet will serve the amount: {{detail}}",
+        "refused": "The gateway refused the request ({{status}}): {{detail}}",
+        "unknown": "The gateway could not be verified: {{detail}}"
       },
       "seed-option": {
         "new": "Generate new random seed",

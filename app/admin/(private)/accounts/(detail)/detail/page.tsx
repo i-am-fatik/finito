@@ -66,17 +66,22 @@ export default function Home() {
 										items={[
 											{
 												key: t("accounts:detail.fields.address"),
-												value: item.accountLud16
-													? item.accountLud16.lud16
-													: item.accountCashRegister
-														? "-"
-														: item.accountSpark
+												value: item.accountThunderBridge
+													? (item.accountThunderBridge.lud16 ??
+														(item.accountThunderBridge.iban
+															? formatIban(item.accountThunderBridge.iban)
+															: "-"))
+													: item.accountLud16
+														? item.accountLud16.lud16
+														: item.accountCashRegister
 															? "-"
-															: item.accountNwc
+															: item.accountSpark
 																? "-"
-																: item.accountIban
-																	? formatIban(item.accountIban.iban)
-																	: "-",
+																: item.accountNwc
+																	? "-"
+																	: item.accountIban
+																		? formatIban(item.accountIban.iban)
+																		: "-",
 											},
 										]}
 									/>

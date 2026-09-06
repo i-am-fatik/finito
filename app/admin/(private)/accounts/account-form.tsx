@@ -10,6 +10,7 @@ import type { TFunction } from "i18next";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import type { PartialDeep, Simplify } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
@@ -17,6 +18,13 @@ import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
 import type { EvoluSchema } from "@/lib/evolu";
 import { TableIdSchema } from "@/lib/evolu/types";
+import {
+	createGatewayCheck,
+	type GatewayProblem,
+	type GatewayProblemKind,
+	quoteThroughBridge,
+} from "@/lib/payment/gateway";
+import { UserFacingError } from "@/lib/shared/errors";
 import {
 	EmailSchema,
 	FiatCurrency,
@@ -47,6 +55,13 @@ const baseAccountSchema = z.object({
 		lud16: z.string(),
 		gatewayUrl: z.string(),
 		gatewayToken: z.string(),
+	}),
+	accountThunderBridge: z.object({
+		gatewayUrl: z.string(),
+		gatewayToken: z.string(),
+		lud16: z.string(),
+		iban: z.string(),
+		fioReadToken: z.string(),
 	}),
 	accountSpark: z.object({
 		mnemonic: z.string(),
@@ -80,6 +95,36 @@ const accountSchema = z.discriminatedUnion("_tag", [
 			),
 		}),
 	}),
+	baseAccountSchema
+		.extend({
+			_tag: z.literal("accountThunderBridge"),
+			accountThunderBridge: z.object({
+				gatewayUrl: StringToNullableStringSchema.pipe(HttpsUrlSchema),
+				gatewayToken: StringToNullableStringSchema.pipe(
+					NonEmptyString255Schema.nullable(),
+				),
+				lud16: StringToNullableStringSchema.pipe(EmailSchema.nullable()),
+				iban: StringToNullableStringSchema.transform((value) =>
+					value === null ? null : value.replace(/ /g, ""),
+				).pipe(IbanSchema.nullable()),
+				fioReadToken: StringToNullableStringSchema.pipe(
+					NonEmptyString255Schema.nullable(),
+				),
+			}),
+		})
+		.check((ctx) => {
+			if (
+				ctx.value.accountThunderBridge.lud16 === null &&
+				ctx.value.accountThunderBridge.iban === null
+			) {
+				ctx.issues.push({
+					code: "custom",
+					input: ctx.value,
+					message: "Give the gateway a lightning address or an IBAN to serve.",
+					path: ["accountThunderBridge", "lud16"],
+				});
+			}
+		}),
 	baseAccountSchema.extend({
 		_tag: z.literal("accountSpark"),
 		accountSpark: z.discriminatedUnion("mnemonicVariant", [
@@ -106,6 +151,22 @@ const accountSchema = z.discriminatedUnion("_tag", [
 	}),
 ]);
 
+const checkGateway = createGatewayCheck({ quote: quoteThroughBridge });
+
+const gatewayProblemKeys = {
+	unauthorized: "accounts:form.account-form.gateway.unauthorized",
+	unreachable: "accounts:form.account-form.gateway.unreachable",
+	noWallet: "accounts:form.account-form.gateway.noWallet",
+	refused: "accounts:form.account-form.gateway.refused",
+	unknown: "accounts:form.account-form.gateway.unknown",
+} as const satisfies Record<GatewayProblemKind, string>;
+
+const describeGatewayRefusal = (t: TFunction, problem: GatewayProblem) =>
+	t(gatewayProblemKeys[problem.kind], {
+		status: problem.status ?? "",
+		detail: problem.detail ?? "",
+	});
+
 const createIdDeps = {
 	randomBytes: createRandomBytes(),
 };
@@ -125,6 +186,13 @@ const createItemDefaultValues = () =>
 			gatewayUrl: "",
 			gatewayToken: "",
 		},
+		accountThunderBridge: {
+			gatewayUrl: "",
+			gatewayToken: "",
+			lud16: "",
+			iban: "",
+			fioReadToken: "",
+		},
 		accountSpark: {
 			mnemonicVariant: "new",
 			mnemonic: "",
@@ -142,6 +210,7 @@ const tagKeys = [
 	"accountLud16",
 	"accountNwc",
 	"accountSpark",
+	"accountThunderBridge",
 	"accountCashRegister",
 ] as const;
 
@@ -165,6 +234,9 @@ const createComponents = (
 					accountLud16: t("accounts:form.account-form.tag.account-lud16"),
 					accountNwc: t("accounts:form.account-form.tag.account-nwc"),
 					accountSpark: t("accounts:form.account-form.tag.account-spark"),
+					accountThunderBridge: t(
+						"accounts:form.account-form.tag.account-thunder-bridge",
+					),
 					accountCashRegister: t(
 						"accounts:form.account-form.tag.account-cash-register",
 					),
@@ -196,6 +268,28 @@ const createComponents = (
 				}),
 				...builder.magicInput("gatewayToken").text({
 					label: t("accounts:form.account-form.label.gateway-token"),
+					secretContent: true,
+				}),
+			}),
+		})),
+
+		...builder.nestedField("accountThunderBridge", ({ builder }) => ({
+			...builder.when("_tag", "accountThunderBridge", {
+				...builder.magicInput("gatewayUrl").text({
+					label: t("accounts:form.account-form.label.gateway-url"),
+				}),
+				...builder.magicInput("gatewayToken").text({
+					label: t("accounts:form.account-form.label.gateway-token"),
+					secretContent: true,
+				}),
+				...builder.magicInput("lud16").text({
+					label: t("accounts:form.account-form.label.lud16"),
+				}),
+				...builder.magicInput("iban").text({
+					label: t("accounts:form.account-form.label.iban"),
+				}),
+				...builder.magicInput("fioReadToken").text({
+					label: t("accounts:form.account-form.label.fio-read-token"),
 					secretContent: true,
 				}),
 			}),
@@ -284,6 +378,34 @@ export const AccountForm: React.FC<{
 					gatewayUrl: values.accountLud16.gatewayUrl,
 					gatewayToken: values.accountLud16.gatewayToken,
 				};
+			} else if (values._tag === "accountThunderBridge") {
+				const bridge = values.accountThunderBridge;
+
+				if (bridge.lud16 !== null) {
+					const check = await checkGateway({
+						gatewayUrl: bridge.gatewayUrl,
+						gatewayToken: bridge.gatewayToken,
+						lud16: bridge.lud16,
+					});
+
+					if (!check.ok) {
+						throw new UserFacingError(describeGatewayRefusal(t, check.problem));
+					}
+
+					toast.success(
+						t("accounts:form.account-form.gateway.ok", {
+							address: check.lnAddress,
+						}),
+					);
+				}
+
+				upserts.accountThunderBridge = {
+					gatewayUrl: bridge.gatewayUrl,
+					gatewayToken: bridge.gatewayToken,
+					lud16: bridge.lud16,
+					iban: bridge.iban,
+					fioReadToken: bridge.fioReadToken,
+				};
 			} else if (values._tag === "accountNwc") {
 				upserts.accountNwc = {
 					credentials: values.accountNwc.credentials,
@@ -322,6 +444,7 @@ export const AccountForm: React.FC<{
 				"accountLud16",
 				"accountNwc",
 				"accountSpark",
+				"accountThunderBridge",
 				"accountCashRegister",
 			]);
 

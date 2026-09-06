@@ -48,12 +48,14 @@ const paymentDefaultMethodAccountsQuery = createQuery((db) =>
 		.selectFrom("account")
 		.leftJoin("accountIban", "accountIban.id", "account.id")
 		.leftJoin("accountLud16", "accountLud16.id", "account.id")
+		.leftJoin("accountThunderBridge", "accountThunderBridge.id", "account.id")
 		.select([
 			"account.id as id",
 			"account.name as name",
 			"account._tag as _tag",
 			"accountIban.iban as iban",
 			"accountLud16.lud16 as lud16",
+			"accountThunderBridge.lud16 as bridgeLud16",
 		] as const)
 		.where("account.isDeleted", "is not", sqliteTrue)
 		.where("account.name", "is not", null)
@@ -64,6 +66,7 @@ const paymentDefaultMethodAccountsQuery = createQuery((db) =>
 			"accountLud16",
 			"accountSpark",
 			"accountNwc",
+			"accountThunderBridge",
 		])
 		.$narrowType<{
 			name: KyselyNotNull;
@@ -161,6 +164,9 @@ const getAccountTagLabel = (
 	if (tag === "accountLud16") {
 		return t("accounts:form.account-form.tag.account-lud16");
 	}
+	if (tag === "accountThunderBridge") {
+		return t("accounts:form.account-form.tag.account-thunder-bridge");
+	}
 	if (tag === "accountSpark") {
 		return t("accounts:form.account-form.tag.account-spark");
 	}
@@ -181,6 +187,7 @@ const getAccountLabel = (
 		_tag: string;
 		iban: string | null;
 		lud16: string | null;
+		bridgeLud16: string | null;
 	},
 ) => {
 	if (account._tag === "accountIban" && account.iban) {
@@ -189,6 +196,10 @@ const getAccountLabel = (
 
 	if (account._tag === "accountLud16" && account.lud16) {
 		return `${account.lud16} (${account.name})`;
+	}
+
+	if (account._tag === "accountThunderBridge" && account.bridgeLud16) {
+		return `${account.bridgeLud16} (${account.name}, ${getAccountTagLabel(t, account._tag)})`;
 	}
 
 	return `${account.name} (${getAccountTagLabel(t, account._tag)})`;
