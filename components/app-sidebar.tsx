@@ -14,6 +14,7 @@ import {
 	IconSettings,
 	IconUserCircle,
 	IconUsers,
+	IconWallet,
 } from "@tabler/icons-react";
 import type { TFunction } from "i18next";
 import Link from "next/link";
@@ -93,6 +94,11 @@ const createNavigationData = (t: TFunction) =>
 				title: t("navigation:main.links.moneyAccounts"),
 				url: "/admin/accounts",
 				icon: IconBuildingBank,
+			},
+			{
+				title: t("navigation:main.links.wallet"),
+				url: "/admin/wallet",
+				icon: IconWallet,
 			},
 			{
 				title: t("navigation:main.links.aiAssistant"),

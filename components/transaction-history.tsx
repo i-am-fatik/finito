@@ -1,4 +1,5 @@
 import { CheckIcon, ReceiptIcon, XIcon } from "lucide-react";
+import type { Route } from "next";
 import type { FC, ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { VerticalNav } from "@/app/(client)/settings/vertial-nav";
@@ -46,9 +47,15 @@ const PaymentStatusIcon: FC<{
 	);
 };
 
-export const TransactionHistory = () => {
+const clientDetailHref = (paymentId: string): Route =>
+	`/history/detail?id=${encodeURIComponent(paymentId)}`;
+
+export const TransactionHistory: FC<{
+	detailHref?: (paymentId: string) => Route;
+}> = (props) => {
 	const { t } = useTranslation();
 	const { data: items } = useEvoluQuery(getLatestPayments);
+	const detailHref = props.detailHref ?? clientDetailHref;
 
 	const navItems = items.length === 0 ? ([false] as const) : items;
 
@@ -115,7 +122,7 @@ export const TransactionHistory = () => {
 							/>
 						</div>
 					),
-					nextLink: `/history/detail?id=${encodeURIComponent(item.id)}`,
+					nextLink: detailHref(item.id),
 				};
 			})}
 		/>

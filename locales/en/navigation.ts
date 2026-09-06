@@ -36,6 +36,7 @@ const locale = {
       "clients": "Clients",
       "contacts": "Contacts",
       "moneyAccounts": "Money Accounts",
+      "wallet": "Wallet",
       "transactions": "Transactions",
       "bills": "Bills"
     }
