@@ -1,10 +1,14 @@
-import { afterEach, describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it, mock } from "bun:test";
 import {
 	type ExchangePreset,
 	exchangePresets,
 } from "@/lib/integrations/currency-converter/exchange-presets";
 import { createPresetDriver } from "@/lib/integrations/currency-converter/preset-driver";
 import { Currency, ExchangeRateSource, Integer } from "@/lib/shared/types";
+
+mock.module("@/lib/http/fetch", () => ({
+	universalFetch: (...args: Parameters<typeof fetch>) => fetch(...args),
+}));
 
 const originalFetch = globalThis.fetch;
 

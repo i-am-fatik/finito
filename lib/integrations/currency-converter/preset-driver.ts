@@ -1,4 +1,5 @@
 import { BigNumber } from "bignumber.js";
+import { universalFetch } from "@/lib/http/fetch";
 import type { CurrencyConverterDriver } from "@/lib/integrations/currency-converter/currency-converter-types";
 import type {
 	ExchangePair,
@@ -14,7 +15,7 @@ const fetchPrice = async (preset: ExchangePreset, pair: ExchangePair) => {
 	}
 
 	try {
-		const response = await fetch(url);
+		const response = await universalFetch(url);
 		if (!response.ok) {
 			console.error(
 				new Error(`${preset.label} responded with ${response.status}`),
