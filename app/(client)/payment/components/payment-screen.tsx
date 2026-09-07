@@ -5,6 +5,7 @@ import {
 } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
 import { isTauri } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { motion } from "framer-motion";
 import { useAtomValue } from "jotai";
 import { LoaderCircleIcon, SquircleDashedIcon } from "lucide-react";
@@ -49,12 +50,15 @@ const btcWalletsQuery = createQuery((db) =>
 );
 
 const openInWallet = (lnInvoice: NonEmptyString) => {
+	const walletUrl = `lightning:${lnInvoice}`;
+	if (isTauri()) {
+		void openUrl(walletUrl).catch(() => undefined);
+		return;
+	}
+
 	const a = document.createElement("a");
 	a.style.display = "none";
-	a.href = `lightning:${lnInvoice}`;
-	if (isTauri()) {
-		a.target = "_blank";
-	}
+	a.href = walletUrl;
 
 	document.body.appendChild(a);
 	a.click();
