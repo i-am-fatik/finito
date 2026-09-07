@@ -4,6 +4,7 @@ import {
 	sqliteTrue,
 } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
+import { isTauri } from "@tauri-apps/api/core";
 import { motion } from "framer-motion";
 import { useAtomValue } from "jotai";
 import { LoaderCircleIcon, SquircleDashedIcon } from "lucide-react";
@@ -51,7 +52,9 @@ const openInWallet = (lnInvoice: NonEmptyString) => {
 	const a = document.createElement("a");
 	a.style.display = "none";
 	a.href = `lightning:${lnInvoice}`;
-	// a.target = "_blank";
+	if (isTauri()) {
+		a.target = "_blank";
+	}
 
 	document.body.appendChild(a);
 	a.click();
