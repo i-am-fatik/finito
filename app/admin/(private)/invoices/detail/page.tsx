@@ -53,12 +53,13 @@ import { InvoiceStatus } from "@/lib/evolu/model/invoice-status";
 import { createIsdocXml } from "@/lib/invoice/isdoc";
 import { generateCzechBankQrCode } from "@/lib/payment/czech-bank-qr-generator";
 import { downloadFile } from "@/lib/shared/files/file-utils";
-import { Integer } from "@/lib/shared/types";
+import { Integer, TimestampMs } from "@/lib/shared/types";
 import { formatIban, formatMoney } from "@/lib/shared/utils/format";
 
 const StatusButton: FC<{
 	invoiceId: Id;
 }> = (props) => {
+	const evolu = useEvolu();
 	const query = useMemo(
 		() =>
 			createQuery((db) =>
@@ -79,12 +80,16 @@ const StatusButton: FC<{
 			? InvoiceStatus.Paid
 			: InvoiceStatus.Unpaid;
 
-	const markAsPaid = async () => {
-		// @TODO
-		// evolu.upsert("invoiceStatus", {
-		// 	id: props.invoiceId,
-		// 	status: value === "unpaid" ? InvoiceStatus.Paid : InvoiceStatus.Unpaid,
-		// });
+	const markAsPaid = () => {
+		evolu.upsert("paymentWatchingState", {
+			id: props.invoiceId,
+			verifiedAt:
+				value === InvoiceStatus.Unpaid ? TimestampMs(Date.now()) : null,
+			proveType: null,
+			transactionId: null,
+			stoppedAt: null,
+			stopReason: null,
+		});
 	};
 
 	return (
