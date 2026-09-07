@@ -1,5 +1,6 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
 import {
 	CheckIcon,
@@ -27,6 +28,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useClipboard } from "@/hooks/use-clipboard";
+import { useEvolu } from "@/hooks/use-evolu";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
 
 type DetailTab = "overview" | "reconciliation";
@@ -66,6 +68,7 @@ export default function Layout(
 	}>,
 ) {
 	const { t } = useTranslation();
+	const evolu = useEvolu();
 	const { copy, copied } = useClipboard();
 	const { withConfirm } = useGlobalDialog();
 	const pathname = usePathname();
@@ -76,7 +79,15 @@ export default function Layout(
 
 	const { mutateAsync: deletePayment } = useMutation({
 		mutationFn: async () => {
-			// @TODO
+			if (id === null) {
+				return;
+			}
+
+			evolu.update("payment", {
+				id: id as Id,
+				isDeleted: sqliteTrue,
+			});
+
 			router.push("/admin/payments");
 		},
 	});
