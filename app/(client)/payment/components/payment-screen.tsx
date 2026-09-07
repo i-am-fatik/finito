@@ -51,6 +51,7 @@ const openInWallet = (lnInvoice: NonEmptyString) => {
 	const a = document.createElement("a");
 	a.style.display = "none";
 	a.href = `lightning:${lnInvoice}`;
+	// a.target = "_blank";
 
 	document.body.appendChild(a);
 	a.click();
