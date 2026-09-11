@@ -6,8 +6,9 @@ import { createDeviceQuery } from "@/lib/evolu/device";
 import { WssUrl } from "@/lib/shared/types";
 
 export const defaultRelays = [
-	// WssUrl("wss://relay.primal.net"),
-	// WssUrl("wss://relay.damus.io"),
+	WssUrl("wss://relay.damus.io"),
+	WssUrl("wss://nos.lol"),
+	WssUrl("wss://relay.primal.net"),
 	// WssUrl("wss://relay.iris.to"),
 	// WssUrl("wss://relay.snort.social"),
 	// WssUrl("wss://relay.utxo.one"),
