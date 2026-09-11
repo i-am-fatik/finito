@@ -87,6 +87,7 @@ test("offers to take back a deleted bill and brings it back on undo", async ({
 	await page.getByText(label, { exact: true }).click();
 	await expect(page).toHaveURL(/\/admin\/pos\?id=/, { timeout: 20_000 });
 	await expect(billTabs(page)).toHaveCount(1);
+	await expect(page.getByText(label, { exact: true })).toHaveCount(2);
 
 	await page
 		.getByRole("button", { name: posTabs.deleteBill.confirm })
