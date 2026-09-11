@@ -11,6 +11,8 @@ import type {
 	CatalogScenarioInput,
 	CatalogScenarioResult,
 	E2EScenarioContext,
+	E2EScenarioInputMap,
+	E2EScenarioResultMap,
 	E2EWorkerContext,
 } from "@/lib/testing/e2e-types";
 import { baseURL } from "../playwright.config";
@@ -70,14 +72,10 @@ type E2ETestFixtures = {
 			deviceId: string;
 			mnemonic: string;
 		}>;
-		runScenario: <
-			TName extends keyof import("@/lib/testing/e2e-types").E2EScenarioInputMap,
-		>(
+		runScenario: <TName extends keyof E2EScenarioInputMap>(
 			name: TName,
-			input: import("@/lib/testing/e2e-types").E2EScenarioInputMap[TName],
-		) => Promise<
-			import("@/lib/testing/e2e-types").E2EScenarioResultMap[TName]
-		>;
+			input: E2EScenarioInputMap[TName],
+		) => Promise<E2EScenarioResultMap[TName]>;
 		seedCatalog: (
 			input: CatalogScenarioInput,
 		) => Promise<CatalogScenarioResult>;

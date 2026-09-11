@@ -2,8 +2,6 @@ import { expect, type Page } from "@playwright/test";
 import type {
 	E2EScenarioContext,
 	E2EWorkerContext,
-	CatalogScenarioInput,
-	CatalogScenarioResult,
 	E2EScenarioInputMap,
 	E2EScenarioName,
 	E2EScenarioResultMap,
@@ -79,10 +77,3 @@ export const runScenario = async <TName extends E2EScenarioName>(
 
 	return result as E2EScenarioResultMap[TName];
 };
-
-export const seedCatalog = async (
-	page: Page,
-	scenario: CatalogScenarioInput,
-	context: E2EScenarioContext,
-): Promise<CatalogScenarioResult> =>
-	await runScenario(page, "catalog", scenario, context);
