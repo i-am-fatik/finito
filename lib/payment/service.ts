@@ -20,6 +20,7 @@ import type { PaymentWatchingStopReason } from "@/lib/evolu/model/payment-watchi
 import { createPaymentDefaultMethodsQuery } from "@/lib/evolu/queries/payment-default-method";
 import { createItem } from "@/lib/item/service";
 import { getBtcWalletAdapter } from "@/lib/payment/btc-wallet/registry";
+import { variableSymbolForPayment } from "@/lib/payment/variable-symbol";
 import type { EvoluDep, NdkDep } from "@/lib/shared/dependencies";
 import {
 	type Email,
@@ -27,7 +28,6 @@ import {
 	NonEmptyString,
 	NonEmptyString255,
 	type NonNegativeInteger,
-	VariableSymbol,
 } from "@/lib/shared/types";
 import { lazy } from "@/lib/shared/utils/lazy";
 import {
@@ -456,7 +456,8 @@ export const createPayment =
 			params.paymentLnSpark ||
 			params.paymentLnZap ||
 			params.paymentLnNwc ||
-			params.paymentLnBridge
+			params.paymentLnBridge ||
+			params.paymentBankTransferCZ
 		) {
 			deps.evolu.upsert("paymentWatchingState", {
 				id,
@@ -547,18 +548,22 @@ export const createPaymentWithDefaultMethods =
 			}
 
 			if (defaultMethod.type === PaymentDefaultMethodType.BankTransferCZ) {
-				if (
-					defaultMethod.accountTag !== "accountIban" ||
-					defaultMethod.accountIban === null
-				) {
+				const iban =
+					defaultMethod.accountTag === "accountIban"
+						? defaultMethod.accountIban
+						: defaultMethod.accountTag === "accountThunderBridge"
+							? defaultMethod.accountThunderBridgeIban
+							: null;
+
+				if (iban === null) {
 					throw new Error(
 						"Bank transfer default method must target an account with IBAN.",
 					);
 				}
 
 				paymentBankTransferCZ = {
-					iban: defaultMethod.accountIban,
-					variableSymbol: VariableSymbol("1"),
+					iban,
+					variableSymbol: variableSymbolForPayment(params.payment.id),
 				};
 				continue;
 			}

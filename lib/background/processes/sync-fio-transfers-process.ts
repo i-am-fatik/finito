@@ -3,14 +3,16 @@ import { z } from "zod";
 import type { BackgroundProcess } from "@/lib/background/service";
 import { createQuery } from "@/lib/evolu";
 import { FioApiClient } from "@/lib/integrations/fio/client";
+import { createUpsertBankVariableSymbolReconciliationClaims } from "@/lib/reconciliation/service";
 import {
 	ConstantSymbol,
 	Currency,
+	Iban,
 	Integer,
 	NonEmptyString,
 	NonEmptyString255,
 	SpecificSymbol,
-	type TimestampMs,
+	TimestampMs,
 	VariableSymbol,
 } from "@/lib/shared/types";
 import { stableStringify } from "@/lib/shared/utils/json";
@@ -153,6 +155,12 @@ export const syncFioTransfersProcess: BackgroundProcess = {
 			timestamp: Date.now(),
 		});
 
+		const upsertBankClaims = createUpsertBankVariableSymbolReconciliationClaims(
+			{
+				evolu: props.evolu,
+			},
+		);
+
 		let fioApiClient: FioApiClient | null = null;
 		let fioClientConfigKey = "";
 		let intervalMs = 30_000;
@@ -201,10 +209,36 @@ export const syncFioTransfersProcess: BackgroundProcess = {
 					),
 				);
 
-				const fioData = fioPluginRows[0];
-				const tokens = fioPluginTokens.flatMap((item) =>
-					item.token === null ? [] : [`${item.token}`],
+				const bridgeAccounts = await props.evolu.loadQuery(
+					createQuery((db) =>
+						db
+							.selectFrom("account")
+							.innerJoin(
+								"accountThunderBridge",
+								"accountThunderBridge.id",
+								"account.id",
+							)
+							.select([
+								"account.id as id",
+								"accountThunderBridge.iban as iban",
+								"accountThunderBridge.fioReadToken as fioReadToken",
+							] as const)
+							.where("account.isDeleted", "is not", sqliteTrue)
+							.where("accountThunderBridge.isDeleted", "is not", sqliteTrue),
+					),
 				);
+
+				const fioData = fioPluginRows[0];
+				const tokens = [
+					...new Set([
+						...fioPluginTokens.flatMap((item) =>
+							item.token === null ? [] : [`${item.token}`],
+						),
+						...bridgeAccounts.flatMap((item) =>
+							item.fioReadToken === null ? [] : [`${item.fioReadToken}`],
+						),
+					]),
+				];
 				if (fioData?.isActive !== sqliteTrue) {
 					notification.update({
 						title: "FIO transfers sync",
@@ -266,13 +300,23 @@ export const syncFioTransfersProcess: BackgroundProcess = {
 					{
 						id: Id;
 						currency: string | null;
+						tag: "accountIban" | "accountThunderBridge";
 					}
 				>();
+				for (const row of bridgeAccounts) {
+					if (!row.iban) continue;
+					accountByIban.set(normalizeIban(row.iban), {
+						id: row.id,
+						currency: null,
+						tag: "accountThunderBridge",
+					});
+				}
 				for (const row of ibanAccounts) {
 					if (!row.iban) continue;
 					accountByIban.set(normalizeIban(row.iban), {
 						id: row.id,
 						currency: row.currency,
+						tag: "accountIban",
 					});
 				}
 
@@ -318,7 +362,7 @@ export const syncFioTransfersProcess: BackgroundProcess = {
 					props.evolu.upsert("transaction", {
 						id: transferId,
 						accountId: account.id,
-						_tag: "accountIban",
+						_tag: account.tag,
 						amount: Integer(transaction.Objem),
 						currency: z.enum(Currency).parse(transaction.Měna),
 						occurredAt: resolveOccurredAt(transactionRecord),
@@ -346,6 +390,26 @@ export const syncFioTransfersProcess: BackgroundProcess = {
 							? NonEmptyString255(bankReference)
 							: null,
 					});
+
+					if (variableSymbol) {
+						const claimedPaymentIds = await upsertBankClaims({
+							transactionId: transferId,
+							accountId: account.id,
+							variableSymbol: VariableSymbol(variableSymbol),
+							iban: Iban(statementIban),
+							amount: Integer(transaction.Objem),
+							createdBy: "syncFioTransfersProcess",
+						});
+
+						for (const paymentId of claimedPaymentIds) {
+							props.evolu.update("paymentWatchingState", {
+								id: paymentId,
+								verifiedAt: TimestampMs(Date.now()),
+								proveType: "bankTransferCZ",
+								transactionId: transferId,
+							});
+						}
+					}
 
 					processedTransfers += 1;
 				}

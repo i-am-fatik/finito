@@ -359,7 +359,11 @@ export const AppSchema = {
 		// Confidence score used by reconciliation ordering.
 		confidence: z.number(),
 		// Matching or override rule identifier.
-		rule: z.enum(["lnPaymentHash", "manualCashRegisterSettlement"]),
+		rule: z.enum([
+			"lnPaymentHash",
+			"bankVariableSymbol",
+			"manualCashRegisterSettlement",
+		]),
 		// Optional actor/process identifier that authored this claim.
 		createdBy: z
 			.enum([
@@ -367,6 +371,7 @@ export const AppSchema = {
 				"syncSparkTransfersProcess",
 				"syncNwcTransfersProcess",
 				"syncBridgeTransfersProcess",
+				"syncFioTransfersProcess",
 				"adminPaymentsDetail",
 				"posBillCharge",
 			])
@@ -729,7 +734,9 @@ export const AppSchema = {
 		// Epoch milliseconds when watcher marked payment as verified.
 		verifiedAt: TimestampMsSchema.nullable(),
 		// Verification source/type
-		proveType: z.enum(["lnZap", "lnSpark", "lnNwc", "lnBridge"]).nullable(),
+		proveType: z
+			.enum(["lnZap", "lnSpark", "lnNwc", "lnBridge", "bankTransferCZ"])
+			.nullable(),
 		// Related transaction id created by verification process.
 		transactionId: NullableTableIdSchema,
 		// Epoch milliseconds when active watching was interrupted.

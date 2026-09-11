@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { createIdFromString } from "@evolu/common";
 import * as ndk from "@nostr-dev-kit/ndk";
 import { PaymentDefaultMethodType } from "@/lib/evolu/model/payment-default-method";
+import { variableSymbolForPayment } from "@/lib/payment/variable-symbol";
 import type { NdkDep } from "@/lib/shared/dependencies";
 import { Currency, NonNegativeInteger } from "@/lib/shared/types";
 import { testLightningInvoice } from "@/lib/test-support/bolt11";
@@ -16,6 +17,8 @@ const gatewayUrl = "https://gateway.invalid";
 const gatewayToken = "invented-gateway-token";
 const gatewayPaymentId = "invented-gateway-payment-id";
 const lud16 = "merchant@wallet.invalid";
+const bridgeIban = "CZ1111111111111111111111";
+const plainIban = "CZ2222222222222222222222";
 const amountSats = 600;
 
 const bridgeInvoice = testLightningInvoice({
@@ -241,6 +244,125 @@ describe("createPaymentWithDefaultMethods", () => {
 				},
 			},
 		]);
+	});
+
+	const setupBankTransfer = (defaultMethod: EvoluRow) => {
+		const evoluFake = setupEvolu({
+			rowsFor: (query) =>
+				query.includes("paymentDefaultMethod") ? [defaultMethod] : [],
+		});
+
+		const run = () =>
+			createPaymentWithDefaultMethods({
+				evolu: evoluFake.evolu,
+				ndk: new FakeNdk({
+					explicitRelayUrls: ["wss://relay.invalid"],
+				}) as unknown as NdkDep["ndk"],
+			})({
+				payment: {
+					id: paymentId,
+					deviceId: null,
+					currency: Currency.CZK,
+				},
+				totalAmount: NonNegativeInteger(15000),
+				tipAmount: null,
+			});
+
+		return { ...evoluFake, run };
+	};
+
+	const bankDefaultMethod = (overrides: EvoluRow): EvoluRow => ({
+		id: createIdFromString("bankDefaultMethod"),
+		type: PaymentDefaultMethodType.BankTransferCZ,
+		accountId,
+		pausedAt: null,
+		accountName: "Bank account",
+		accountIban: null,
+		accountLud16: null,
+		accountThunderBridgeLud16: null,
+		accountThunderBridgeIban: null,
+		...overrides,
+	});
+
+	it("routes a bank transfer to the iban the bridge account carries", async () => {
+		const { run, upserts } = setupBankTransfer(
+			bankDefaultMethod({
+				accountTag: "accountThunderBridge",
+				accountThunderBridgeIban: bridgeIban,
+			}),
+		);
+
+		await run();
+
+		expect(gatewayConstructions).toHaveLength(0);
+		expect(writesTo(upserts, "paymentBankTransferCZ")[0]?.values).toMatchObject(
+			{
+				id: paymentId,
+				iban: bridgeIban,
+			},
+		);
+	});
+
+	it("routes a bank transfer to the iban of a plain iban account", async () => {
+		const { run, upserts } = setupBankTransfer(
+			bankDefaultMethod({
+				accountTag: "accountIban",
+				accountIban: plainIban,
+			}),
+		);
+
+		await run();
+
+		expect(writesTo(upserts, "paymentBankTransferCZ")[0]?.values).toMatchObject(
+			{
+				id: paymentId,
+				iban: plainIban,
+			},
+		);
+	});
+
+	it("gives the bank transfer the variable symbol the payment answers to", async () => {
+		const { run, upserts } = setupBankTransfer(
+			bankDefaultMethod({
+				accountTag: "accountThunderBridge",
+				accountThunderBridgeIban: bridgeIban,
+			}),
+		);
+
+		await run();
+
+		expect(writesTo(upserts, "paymentBankTransferCZ")[0]?.values).toMatchObject(
+			{
+				variableSymbol: variableSymbolForPayment(paymentId),
+			},
+		);
+	});
+
+	it("puts a bank transfer under watch so a rail can prove it paid", async () => {
+		const { run, upserts } = setupBankTransfer(
+			bankDefaultMethod({
+				accountTag: "accountThunderBridge",
+				accountThunderBridgeIban: bridgeIban,
+			}),
+		);
+
+		await run();
+
+		expect(writesTo(upserts, "paymentWatchingState")[0]?.values).toMatchObject({
+			id: paymentId,
+			verifiedAt: null,
+			proveType: null,
+		});
+	});
+
+	it("refuses a bank transfer whose account carries no iban", async () => {
+		const { run } = setupBankTransfer(
+			bankDefaultMethod({ accountTag: "accountThunderBridge" }),
+		);
+
+		expect(run()).rejects.toThrow(
+			"Bank transfer default method must target an account with IBAN",
+		);
 	});
 
 	it("routes a lud16 account without a gateway to paymentLnZap", async () => {

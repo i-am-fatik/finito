@@ -1,7 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import { createIdFromString } from "@evolu/common";
-import { createUpsertLnPaymentHashReconciliationClaims } from "@/lib/reconciliation/service";
-import { Integer, NonEmptyString } from "@/lib/shared/types";
+import {
+	createUpsertBankVariableSymbolReconciliationClaims,
+	createUpsertLnPaymentHashReconciliationClaims,
+} from "@/lib/reconciliation/service";
+import {
+	Iban,
+	Integer,
+	NonEmptyString,
+	VariableSymbol,
+} from "@/lib/shared/types";
 import {
 	type EvoluRow,
 	setupEvolu,
@@ -318,5 +326,140 @@ describe("createUpsertLnPaymentHashReconciliationClaims", () => {
 		await claim(1000, source);
 
 		expect(sqlOf(loadedQueries[0])).toContain(`inner join "${source}"`);
+	});
+});
+
+const bankIban = Iban("CZ1111111111111111111111");
+const bankVariableSymbol = VariableSymbol("1234567890");
+
+const setupBankClaims = (params: {
+	payments: ReadonlyArray<{
+		id: string;
+		expectedProductAmount?: number | null;
+		expectedTipAmount?: number | null;
+	}>;
+}) => {
+	const evoluFake = setupEvolu({
+		rowsFor: (query) => {
+			if (query.includes("expectedProductAmount")) {
+				const claimed = params.payments.find((payment) =>
+					query.includes(payment.id),
+				);
+
+				return claimed === undefined ||
+					claimed.expectedProductAmount === undefined
+					? []
+					: [
+							{
+								tipAmount: claimed.expectedTipAmount ?? null,
+								expectedProductAmount: claimed.expectedProductAmount,
+							},
+						];
+			}
+
+			return params.payments.map((payment) => ({ id: payment.id }));
+		},
+	});
+
+	const upsertClaims = createUpsertBankVariableSymbolReconciliationClaims({
+		evolu: evoluFake.evolu,
+	});
+
+	return {
+		...evoluFake,
+		claim: (amount: number) =>
+			upsertClaims({
+				transactionId,
+				accountId,
+				variableSymbol: bankVariableSymbol,
+				iban: bankIban,
+				amount: Integer(amount),
+				createdBy: "syncFioTransfersProcess",
+			}),
+	};
+};
+
+describe("createUpsertBankVariableSymbolReconciliationClaims", () => {
+	it("claims the payment the variable symbol belongs to", async () => {
+		const { claim, upserts } = setupBankClaims({
+			payments: [{ id: paymentId, expectedProductAmount: 15000 }],
+		});
+
+		const claimedPaymentIds = await claim(15000);
+
+		expect(claimedPaymentIds).toEqual([paymentId]);
+		expect(writesTo(upserts, "reconciliationClaim")[0]?.values).toMatchObject({
+			sourceId: transactionId,
+			entityId: paymentId,
+			rule: "bankVariableSymbol",
+			createdBy: "syncFioTransfersProcess",
+		});
+	});
+
+	it("asks the bank transfer table for the payment, by symbol and by iban", async () => {
+		const { claim, loadedQueries } = setupBankClaims({
+			payments: [{ id: paymentId, expectedProductAmount: 15000 }],
+		});
+
+		await claim(15000);
+
+		const finderQuery = sqlOf(loadedQueries[0] ?? "[]");
+		expect(finderQuery).toContain("paymentBankTransferCZ");
+		expect(finderQuery).toContain("variableSymbol");
+		expect(finderQuery).toContain("iban");
+	});
+
+	it("splits an overpayment across the product, the tip and the rest", async () => {
+		const { claim, upserts } = setupBankClaims({
+			payments: [
+				{
+					id: paymentId,
+					expectedProductAmount: 1000,
+					expectedTipAmount: 150,
+				},
+			],
+		});
+
+		await claim(1500);
+
+		expect(
+			allocationsByComponent(
+				writesTo(upserts, "reconciliationClaimAllocation"),
+			),
+		).toEqual({ product: 1000, tip: 150, overpayment: 350 });
+	});
+
+	it("claims every payment that shares the symbol", async () => {
+		const { claim, upserts } = setupBankClaims({
+			payments: [
+				{ id: paymentId, expectedProductAmount: 1000 },
+				{ id: otherPaymentId, expectedProductAmount: 1000 },
+			],
+		});
+
+		const claimedPaymentIds = await claim(1000);
+
+		expect(claimedPaymentIds).toEqual([paymentId, otherPaymentId]);
+		expect(writesTo(upserts, "reconciliationClaim")).toHaveLength(2);
+	});
+
+	it("claims nothing when the symbol belongs to no payment", async () => {
+		const { claim, upserts } = setupBankClaims({ payments: [] });
+
+		const claimedPaymentIds = await claim(15000);
+
+		expect(claimedPaymentIds).toEqual([]);
+		expect(writesTo(upserts, "reconciliationClaim")).toHaveLength(0);
+	});
+
+	it("claims nothing for a payment it cannot price", async () => {
+		const { claim, upserts } = setupBankClaims({
+			payments: [{ id: paymentId }],
+		});
+
+		const claimedPaymentIds = await claim(15000);
+
+		expect(claimedPaymentIds).toEqual([]);
+		expect(writesTo(upserts, "reconciliationClaim")).toHaveLength(0);
 	});
 });

@@ -2,7 +2,12 @@ import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
 import { sql } from "kysely";
 import { createQuery } from "@/lib/evolu";
 import type { EvoluDep } from "@/lib/shared/dependencies";
-import { Integer, type NonEmptyString } from "@/lib/shared/types";
+import {
+	type Iban,
+	Integer,
+	type NonEmptyString,
+	type VariableSymbol,
+} from "@/lib/shared/types";
 
 type LnPaymentHashSource =
 	| "paymentLnSpark"
@@ -15,6 +20,11 @@ type LnPaymentHashClaimCreatedBy =
 	| "syncNwcTransfersProcess"
 	| "syncBridgeTransfersProcess"
 	| "adminPaymentsDetail";
+type BankVariableSymbolClaimCreatedBy = "syncFioTransfersProcess";
+type ClaimRule = "lnPaymentHash" | "bankVariableSymbol";
+type ClaimCreatedBy =
+	| LnPaymentHashClaimCreatedBy
+	| BankVariableSymbolClaimCreatedBy;
 
 const splitAmountByExpectedAllocation = (params: {
 	amount: Integer;
@@ -145,6 +155,68 @@ const findExpectedAllocationByPaymentId =
 		};
 	};
 
+const upsertClaimWithAllocations =
+	(deps: EvoluDep) =>
+	async (params: {
+		transactionId: Id;
+		accountId: Id;
+		paymentId: Id;
+		amount: Integer;
+		rule: ClaimRule;
+		createdBy: ClaimCreatedBy;
+	}) => {
+		const expectedAllocation = await findExpectedAllocationByPaymentId(deps)({
+			paymentId: params.paymentId,
+		});
+		if (expectedAllocation === null) {
+			return false;
+		}
+
+		const splitAllocation = splitAmountByExpectedAllocation({
+			amount: params.amount,
+			expectedProductAmount: expectedAllocation.expectedProductAmount,
+			expectedTipAmount: expectedAllocation.expectedTipAmount,
+		});
+
+		const claimId = createIdFromString(
+			`reconciliationClaim:${params.rule}:${params.transactionId}:${params.accountId}:${params.paymentId}`,
+		);
+		deps.evolu.upsert("reconciliationClaim", {
+			id: claimId,
+			sourceType: "transaction",
+			sourceId: params.transactionId,
+			entityType: "payment",
+			entityId: params.paymentId,
+			confidence: 1,
+			rule: params.rule,
+			createdBy: params.createdBy,
+		});
+		deps.evolu.upsert("reconciliationClaimAllocation", {
+			id: createIdFromString(
+				`reconciliationClaimAllocation:${claimId}:product`,
+			),
+			claimId,
+			componentType: "product",
+			amount: splitAllocation.productAmount,
+		});
+		deps.evolu.upsert("reconciliationClaimAllocation", {
+			id: createIdFromString(`reconciliationClaimAllocation:${claimId}:tip`),
+			claimId,
+			componentType: "tip",
+			amount: splitAllocation.tipAmount,
+		});
+		deps.evolu.upsert("reconciliationClaimAllocation", {
+			id: createIdFromString(
+				`reconciliationClaimAllocation:${claimId}:overpayment`,
+			),
+			claimId,
+			componentType: "overpayment",
+			amount: splitAllocation.overpaymentAmount,
+		});
+
+		return true;
+	};
+
 export const createUpsertLnPaymentHashReconciliationClaims =
 	(deps: EvoluDep) =>
 	async (params: {
@@ -161,53 +233,74 @@ export const createUpsertLnPaymentHashReconciliationClaims =
 		});
 
 		for (const paymentId of paymentIds) {
-			const expectedAllocation = await findExpectedAllocationByPaymentId(deps)({
+			await upsertClaimWithAllocations(deps)({
+				transactionId: params.transactionId,
+				accountId: params.accountId,
 				paymentId,
-			});
-			if (expectedAllocation === null) {
-				continue;
-			}
-
-			const splitAllocation = splitAmountByExpectedAllocation({
 				amount: params.amount,
-				expectedProductAmount: expectedAllocation.expectedProductAmount,
-				expectedTipAmount: expectedAllocation.expectedTipAmount,
-			});
-
-			const claimId = createIdFromString(
-				`reconciliationClaim:lnPaymentHash:${params.transactionId}:${params.accountId}:${paymentId}`,
-			);
-			deps.evolu.upsert("reconciliationClaim", {
-				id: claimId,
-				sourceType: "transaction",
-				sourceId: params.transactionId,
-				entityType: "payment",
-				entityId: paymentId,
-				confidence: 1,
 				rule: "lnPaymentHash",
 				createdBy: params.createdBy,
 			});
-			deps.evolu.upsert("reconciliationClaimAllocation", {
-				id: createIdFromString(
-					`reconciliationClaimAllocation:${claimId}:product`,
-				),
-				claimId,
-				componentType: "product",
-				amount: splitAllocation.productAmount,
-			});
-			deps.evolu.upsert("reconciliationClaimAllocation", {
-				id: createIdFromString(`reconciliationClaimAllocation:${claimId}:tip`),
-				claimId,
-				componentType: "tip",
-				amount: splitAllocation.tipAmount,
-			});
-			deps.evolu.upsert("reconciliationClaimAllocation", {
-				id: createIdFromString(
-					`reconciliationClaimAllocation:${claimId}:overpayment`,
-				),
-				claimId,
-				componentType: "overpayment",
-				amount: splitAllocation.overpaymentAmount,
-			});
 		}
+	};
+
+const findPaymentIdsByVariableSymbol =
+	(deps: EvoluDep) =>
+	async (params: { variableSymbol: VariableSymbol; iban: Iban }) => {
+		const paymentRows = await deps.evolu.loadQuery(
+			createQuery((db) =>
+				db
+					.selectFrom("payment")
+					.innerJoin(
+						"paymentBankTransferCZ",
+						"paymentBankTransferCZ.id",
+						"payment.id",
+					)
+					.select(["payment.id as id"] as const)
+					.where("payment.isDeleted", "is not", sqliteTrue)
+					.where("paymentBankTransferCZ.isDeleted", "is not", sqliteTrue)
+					.where(
+						"paymentBankTransferCZ.variableSymbol",
+						"=",
+						params.variableSymbol,
+					)
+					.where("paymentBankTransferCZ.iban", "=", params.iban),
+			),
+		);
+
+		return paymentRows.map((row) => row.id);
+	};
+
+export const createUpsertBankVariableSymbolReconciliationClaims =
+	(deps: EvoluDep) =>
+	async (params: {
+		transactionId: Id;
+		accountId: Id;
+		variableSymbol: VariableSymbol;
+		iban: Iban;
+		amount: Integer;
+		createdBy: BankVariableSymbolClaimCreatedBy;
+	}) => {
+		const paymentIds = await findPaymentIdsByVariableSymbol(deps)({
+			variableSymbol: params.variableSymbol,
+			iban: params.iban,
+		});
+		const claimedPaymentIds: Id[] = [];
+
+		for (const paymentId of paymentIds) {
+			const claimed = await upsertClaimWithAllocations(deps)({
+				transactionId: params.transactionId,
+				accountId: params.accountId,
+				paymentId,
+				amount: params.amount,
+				rule: "bankVariableSymbol",
+				createdBy: params.createdBy,
+			});
+
+			if (claimed) {
+				claimedPaymentIds.push(paymentId);
+			}
+		}
+
+		return claimedPaymentIds;
 	};
