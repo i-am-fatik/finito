@@ -26,6 +26,13 @@ const locale = {
   },
   "dashboard": {
     "applicationInformation": "Application information",
+    "relayLatency": "Relay latency",
+    "relayLatencyValue": "connect {{connect}} ms, answer {{answer}} ms",
+    "relayConnectValue": "connect {{connect}} ms",
+    "noSyncRelays": "No sync relay is active, this device keeps its data to itself.",
+    "syncRelays": "Sync relays",
+    "relayNotMeasured": "not measured yet",
+    "measureRelays": "Measure relays",
     "consoleErrors": "Console errors",
     "home": {
       "subtitle": "Decentralized payment platform and point of sale system",

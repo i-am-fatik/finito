@@ -26,6 +26,13 @@ const locale = {
   },
   "dashboard": {
     "applicationInformation": "Informace o aplikaci",
+    "relayLatency": "Odezva relayí",
+    "relayLatencyValue": "spojení {{connect}} ms, odpověď {{answer}} ms",
+    "relayConnectValue": "spojení {{connect}} ms",
+    "noSyncRelays": "Žádná synchronizační relay není aktivní, zařízení si data nechává pro sebe.",
+    "syncRelays": "Synchronizační relaye",
+    "relayNotMeasured": "zatím neměřeno",
+    "measureRelays": "Změřit relaye",
     "consoleErrors": "Chyby konzole",
     "home": {
       "subtitle": "Decentralizovaná platební platforma a pokladní systém",

@@ -2,6 +2,7 @@
 
 import {
 	BugIcon,
+	GaugeIcon,
 	HardDriveDownloadIcon,
 	HistoryIcon,
 	InfoIcon,
@@ -16,7 +17,13 @@ import {
 } from "@/components/sub-nav-shell";
 import { useNostr } from "@/hooks/use-nostr";
 
-type DebugTab = "application" | "storage" | "generator" | "errors" | "nostr";
+type DebugTab =
+	| "application"
+	| "storage"
+	| "generator"
+	| "errors"
+	| "relays"
+	| "nostr";
 
 const debugTabs = [
 	{
@@ -42,6 +49,12 @@ const debugTabs = [
 		labelKey: "admin:dashboard.consoleErrors",
 		icon: BugIcon,
 		nextUrl: "/admin/debug/errors" as Route,
+	},
+	{
+		value: "relays",
+		labelKey: "admin:dashboard.relayLatency",
+		icon: GaugeIcon,
+		nextUrl: "/admin/debug/relays" as Route,
 	},
 ] satisfies readonly DetailShellTab<DebugTab>[];
 

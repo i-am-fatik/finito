@@ -8,7 +8,7 @@ import {
 } from "@evolu/common";
 import { faker } from "@faker-js/faker";
 import { IconDownload, IconReload, IconUpload } from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { addDays, format } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { useAtomValue } from "jotai";
@@ -34,6 +34,12 @@ import { AppSchema, createQuery } from "@/lib/evolu";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import type { Id } from "@/lib/evolu/types";
 import { createItemFromCatalogItem } from "@/lib/item/service";
+import {
+	nostrEoseQuestion,
+	probeRelay,
+	type RelayProbe,
+	webSocketRelaySocket,
+} from "@/lib/nostr/relay-diagnostics";
 import { decodeCsv, encodeCsv } from "@/lib/shared/files/csv";
 import { downloadFile } from "@/lib/shared/files/file-utils";
 import { createZip, extractZip } from "@/lib/shared/files/zip";
@@ -852,6 +858,98 @@ export const GeneratorDebugSection = () => {
 					<div>
 						<RandomDataGenerator />
 					</div>
+				</CardContent>
+			</ResponsiveCard>
+		</div>
+	);
+};
+
+export const RelayDiagnosticsSection = () => {
+	const { t } = useTranslation();
+	const nostrRelays = useNostrRelays();
+	const account = useAtomValue(accountAtom);
+	const [probes, setProbes] = useState<readonly RelayProbe[]>([]);
+	const syncRelays = account.transports.filter(
+		(transport) => transport.type === "WebSocket",
+	);
+	const { mutate: measure, isPending } = useMutation({
+		mutationFn: async () => {
+			const probe = probeRelay({
+				openSocket: webSocketRelaySocket,
+				now: () => performance.now(),
+			});
+
+			return await Promise.all([
+				...nostrRelays.map((relay) =>
+					probe(relay.url, { question: nostrEoseQuestion }),
+				),
+				...syncRelays.map((relay) => probe(relay.url)),
+			]);
+		},
+		onSuccess: setProbes,
+	});
+
+	const describeProbe = (probe: RelayProbe | undefined) => {
+		if (probe === undefined) {
+			return t("admin:dashboard.relayNotMeasured");
+		}
+
+		if (probe.error !== null) {
+			return probe.connectMs === null
+				? probe.error
+				: `${probe.error}, ${Math.round(probe.connectMs)} ms`;
+		}
+
+		if (probe.answerMs === null) {
+			return t("admin:dashboard.relayConnectValue", {
+				connect: Math.round(probe.connectMs ?? 0),
+			});
+		}
+
+		return t("admin:dashboard.relayLatencyValue", {
+			connect: Math.round(probe.connectMs ?? 0),
+			answer: Math.round(probe.answerMs),
+		});
+	};
+
+	const measuredItems = (urls: readonly string[]) =>
+		urls.map((url) => ({
+			key: url,
+			value: describeProbe(probes.find((probe) => probe.url === url)),
+		}));
+
+	return (
+		<div className="flex w-full flex-col gap-4 lg:max-w-7xl">
+			<ResponsiveCard className="w-full">
+				<CardHeader>
+					<CardTitle>{t("admin:dashboard.nostrRelays")}</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<KeyValueList
+						items={measuredItems(nostrRelays.map((relay) => relay.url))}
+					/>
+				</CardContent>
+
+				<CardHeader>
+					<CardTitle>{t("admin:dashboard.syncRelays")}</CardTitle>
+				</CardHeader>
+				<CardContent className={"flex flex-col gap-4 items-start"}>
+					{syncRelays.length === 0 ? (
+						<p className={"text-sm text-muted-foreground"}>
+							{t("admin:dashboard.noSyncRelays")}
+						</p>
+					) : (
+						<KeyValueList
+							items={measuredItems(syncRelays.map((relay) => relay.url))}
+						/>
+					)}
+
+					<Button onClick={() => measure()} disabled={isPending}>
+						{isPending ? (
+							<LoaderCircleIcon className={"animate-spin size-4"} />
+						) : null}
+						{t("admin:dashboard.measureRelays")}
+					</Button>
 				</CardContent>
 			</ResponsiveCard>
 		</div>
