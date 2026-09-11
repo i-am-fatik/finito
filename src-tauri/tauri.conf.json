@@ -5,7 +5,7 @@
   "identifier": "com.finito.dev",
   "build": {
     "frontendDist": "../out",
-    "devUrl": "http://localhost:3000",
+    "devUrl": "https://localhost:3000",
     "beforeDevCommand": "bun dev",
     "beforeBuildCommand": "bun run build"
   },
