@@ -4,7 +4,7 @@ import { BigNumber } from "bignumber.js";
 import { motion } from "framer-motion";
 import { useAtomValue } from "jotai";
 import { SquircleDashedIcon } from "lucide-react";
-import { type FC, useState } from "react";
+import { type FC, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BillItemList } from "@/app/(client)/bill-item-list";
 import {
@@ -40,9 +40,14 @@ const PayButton: FC<{
 	);
 	const selectedItems = useAtomValue(props.selectedItemsAtom);
 	const selectedTip = useAtomValue(props.selectedTipAtom);
+	const payingRef = useRef(false);
+	const mintIntentRef = useRef<{
+		key: string;
+		paymentId: TablePaymentRequest["paymentId"];
+	} | null>(null);
 	const { mutateAsync: pay, isPending } = useMutation({
 		mutationFn: async () => {
-			if (paymentMethod === null) {
+			if (payingRef.current || paymentMethod === null) {
 				return;
 			}
 
@@ -78,14 +83,27 @@ const PayButton: FC<{
 				return;
 			}
 
-			const tablePaymentRequest: TablePaymentRequest = {
-				paymentId: createId({
-					randomBytes: createRandomBytes(),
-				}),
+			const tip = NonNegativeInteger(
+				totalAmount.times(selectedTip).div(100).integerValue().toNumber(),
+			);
+			const intentKey = JSON.stringify({
 				items,
-				tip: NonNegativeInteger(
-					totalAmount.times(selectedTip).div(100).integerValue().toNumber(),
-				),
+				tip,
+				currency: bill.currency,
+				method: paymentMethod,
+			});
+			if (mintIntentRef.current?.key !== intentKey) {
+				mintIntentRef.current = {
+					key: intentKey,
+					paymentId: createId({
+						randomBytes: createRandomBytes(),
+					}),
+				};
+			}
+			const tablePaymentRequest: TablePaymentRequest = {
+				paymentId: mintIntentRef.current.paymentId,
+				items,
+				tip,
 				currency: bill.currency,
 				merchant: props.screen.payload.merchant,
 				paymentOption: {
@@ -93,7 +111,12 @@ const PayButton: FC<{
 				},
 			};
 
-			await props.screen.pay(tablePaymentRequest);
+			payingRef.current = true;
+			try {
+				await props.screen.pay(tablePaymentRequest);
+			} finally {
+				payingRef.current = false;
+			}
 		},
 	});
 
