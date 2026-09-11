@@ -128,6 +128,7 @@ const locale = {
       },
       "label": {
         "own-contact": "Own contact",
+        "venue-name": "Venue name",
         "default-invoice-due-date": "Default invoice due date",
         "default-currency": "Default currency",
         "exchange-rate-source": "Exchange rate source",
@@ -143,7 +144,8 @@ const locale = {
       },
       "description": {
         "in-days": "In days",
-        "exchange-rate-source": "Preferred source of the bitcoin rate. A source that does not quote the pair a bill needs is skipped for that bill."
+        "exchange-rate-source": "Preferred source of the bitcoin rate. A source that does not quote the pair a bill needs is skipped for that bill.",
+        "venue-name": "The name a guest sees when they scan a table."
       },
       "addRowLabel": {
         "add-rate": "Add rate"

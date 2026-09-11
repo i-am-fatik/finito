@@ -18,11 +18,12 @@ import {
 	Currency,
 	Integer,
 	NonEmptyString,
-	NonNegativeInteger,
+	type NonEmptyString255,
 	PositiveNumber,
 	Uuid7,
 } from "@/lib/shared/types";
 import { formatMoney } from "@/lib/shared/utils/format";
+import { billScreenOf } from "@/lib/table/bill-screen";
 import {
 	tableEventMessageBus,
 	tableRequestMessageBus,
@@ -189,7 +190,17 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 				}>(),
 		);
 
+		const venueNameQuery = createQuery((db) =>
+			db
+				.selectFrom("billingSettings")
+				.select(["venueName"])
+				.where("isDeleted", "is not", sqliteTrue)
+				.where("venueName", "is not", null)
+				.$narrowType<{ venueName: KyselyNotNull }>(),
+		);
+
 		let posBills: (typeof posBillsQuery.Row)[] = [];
+		let venueName: NonEmptyString255 | null = null;
 
 		const findBillByQrCode = (qrCodeId: NonEmptyString) =>
 			posBills.find(
@@ -198,48 +209,10 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 					item.table.codes.find((code) => code.code === qrCodeId) !== undefined,
 			);
 
-		const billScreenOf = (
-			bill: typeof posBillsQuery.Row | undefined,
-			view: {
-				paying?: ReadonlyMap<Id, number>;
-				settled?: ReadonlyMap<Id, number>;
-			} = {},
-		): Extract<ScreenData, { variant: "table" }>["payload"] => {
-			if (bill === undefined) {
-				return {
-					bill: null,
-				};
-			}
-
-			const itemLines = bill.items
-				.map((item) => {
-					const quantity =
-						item.quantity - (view.settled?.get(item.item.id) ?? 0);
-					return {
-						quantity,
-						paying: view.paying?.get(item.item.id) ?? 0,
-						optionality: {
-							checked: NonNegativeInteger(Math.max(quantity, 0)),
-						},
-						item: item.item,
-					};
-				})
-				.filter((line) => line.quantity > 0);
-
-			return {
-				bill: {
-					currency: bill.currency,
-					itemLines,
-				},
-				merchant: {
-					name: bill.table?.label ?? NonEmptyString("Unknown"),
-				},
-			};
-		};
-
 		const getBillByQrCode = (qrCodeId: NonEmptyString) => {
 			const bill = findBillByQrCode(qrCodeId);
 			return billScreenOf(bill, {
+				venueName,
 				paying:
 					bill === undefined
 						? undefined
@@ -427,6 +400,15 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 			},
 		);
 
+		const unsubscribeVenueName = subscribeToEvoluQuery(
+			props.evolu,
+			venueNameQuery,
+			(data) => {
+				venueName = data[0]?.venueName ?? null;
+				sendBillChangeToAll();
+			},
+		);
+
 		const settledTableLinesQuery = createQuery((db) =>
 			db
 				.selectFrom("paymentWatchingState")
@@ -553,7 +535,10 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 
 				const paid = pending.settle(paymentId);
 				if (paid !== undefined) {
-					notifyPaymentFinished(paid, billScreenOf(bill, { settled }));
+					notifyPaymentFinished(
+						paid,
+						billScreenOf(bill, { settled, venueName }),
+					);
 				}
 			}
 		};
@@ -570,6 +555,7 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 
 		return () => {
 			unsubscribePosBills();
+			unsubscribeVenueName();
 			unsubscribeSettled();
 			for (const subscription of subscriptionRef.values()) {
 				clearTimeout(subscription.timeout);

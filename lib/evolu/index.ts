@@ -546,6 +546,7 @@ export const AppSchema = {
 	billingSettings: {
 		id: TableIdSchema,
 		ownContactId: TableIdSchema.nullable(),
+		venueName: NonEmptyString255Schema.nullable(),
 		defaultCurrency: z.enum(Currency),
 		defaultTimezone: z.enum(Timezone),
 		exchangeRateSource: z.enum(ExchangeRateSource).nullable(),

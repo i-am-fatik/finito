@@ -21,6 +21,7 @@ export default function Home() {
 					.selectFrom("billingSettings")
 					.select((eb) => [
 						"billingSettings.ownContactId as ownContactId",
+						"billingSettings.venueName as venueName",
 						"billingSettings.defaultCurrency as defaultCurrency",
 						"billingSettings.defaultTimezone as defaultTimezone",
 						"billingSettings.exchangeRateSource as exchangeRateSource",
@@ -67,6 +68,7 @@ export default function Home() {
 					item
 						? {
 								ownContactId: item.ownContactId,
+								venueName: item.venueName ?? "",
 								defaultCurrency: item.defaultCurrency,
 								defaultTimezone: item.defaultTimezone,
 								exchangeRateSource:

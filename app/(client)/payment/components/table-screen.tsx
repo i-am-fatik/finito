@@ -216,6 +216,14 @@ export const TableScreen: FC<{
 				</div>
 
 				<div className={"z-10"}>
+					{props.screen.payload.table !== undefined && (
+						<div
+							className={"text-xs text-muted-foreground uppercase px-4 pb-2"}
+						>
+							{props.screen.payload.table.name}
+						</div>
+					)}
+
 					<BillItemList
 						bill={props.screen.payload.bill}
 						selectedItemsAtom={selectedItemsAtom}

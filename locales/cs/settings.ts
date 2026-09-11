@@ -128,6 +128,7 @@ const locale = {
       },
       "label": {
         "own-contact": "Vlastní kontakt",
+        "venue-name": "Název podniku",
         "default-invoice-due-date": "Výchozí splatnost faktury",
         "default-currency": "Výchozí měna",
         "exchange-rate-source": "Zdroj kurzu",
@@ -143,7 +144,8 @@ const locale = {
       },
       "description": {
         "in-days": "Ve dnech",
-        "exchange-rate-source": "Odkud se bere kurz bitcoinu. Zdroj, který daný pár nekotuje, se u takového účtu přeskočí."
+        "exchange-rate-source": "Odkud se bere kurz bitcoinu. Zdroj, který daný pár nekotuje, se u takového účtu přeskočí.",
+        "venue-name": "Jméno, které uvidí host, když naskenuje stůl."
       },
       "addRowLabel": {
         "add-rate": "Přidat sazbu"

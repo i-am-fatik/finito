@@ -34,6 +34,9 @@ import {
 
 export const billingSettingsFormSchema = z.object({
 	ownContactId: TableIdSchema.nullable(),
+	venueName: StringToNullableStringSchema.pipe(
+		NonEmptyString255Schema.nullable(),
+	),
 	defaultCurrency: z.enum(Currency),
 	defaultTimezone: z.enum(Timezone),
 	exchangeRateSource: z.enum(ExchangeRateSource),
@@ -65,6 +68,7 @@ const createTaxRate = () => ({
 export const createBillingSettingsDefaultValues = () =>
 	({
 		ownContactId: null,
+		venueName: "",
 		defaultCurrency: Currency.USD,
 		defaultTimezone: Timezone["Europe/Prague"],
 		exchangeRateSource: defaultExchangeRateSource,
@@ -131,6 +135,13 @@ const createComponents = (t: TFunction) => {
 					),
 					description: t(
 						"settings:form.billing-settings-form.description.exchange-rate-source",
+					),
+				}),
+
+				...builder.magicInput("venueName").text({
+					label: t("settings:form.billing-settings-form.label.venue-name"),
+					description: t(
+						"settings:form.billing-settings-form.description.venue-name",
 					),
 				}),
 			},
@@ -202,6 +213,7 @@ export const BillingSettingsForm: React.FC<{
 				{
 					id,
 					ownContactId: values.ownContactId,
+					venueName: values.venueName,
 					defaultCurrency: values.defaultCurrency,
 					defaultTimezone: values.defaultTimezone,
 					exchangeRateSource: values.exchangeRateSource,
