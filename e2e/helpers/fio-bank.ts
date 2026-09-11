@@ -4,7 +4,7 @@ const fioHost = "fio.finito-e2e.example";
 
 export const fioApiUrl = `https://${fioHost}`;
 export const fioToken = "e2e-fio-token";
-export const fioIban = "CZ6508000000192000145399";
+export const fioIban = "CZ2120100000001234567890";
 
 type StatementTransaction = {
 	amount: number;
