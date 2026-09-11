@@ -123,7 +123,8 @@ const locale = {
     "actions": {
       "pay": "Pay",
       "refund": "Refund",
-      "copyShowQrInvoice": "Copy & display QR invoice"
+      "copyShowQrInvoice": "Copy & display QR invoice",
+      "copyInvoice": "Copy invoice"
     },
     "loading": {
       "preparingPayment": "The payment is preparing",
@@ -132,7 +133,8 @@ const locale = {
     "status": {
       "paymentSuccessful": "The payment is successfully paid",
       "waitingForPayment": "We are waiting for your payment",
-      "waitingForRefund": "We are waiting for your refund"
+      "waitingForRefund": "We are waiting for your refund",
+      "invoiceCopied": "The invoice is copied"
     },
     "labels": {
       "rate": "rate"

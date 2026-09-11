@@ -8,7 +8,12 @@ import { isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { motion } from "framer-motion";
 import { useAtomValue } from "jotai";
-import { LoaderCircleIcon, SquircleDashedIcon } from "lucide-react";
+import {
+	CheckIcon,
+	CopyIcon,
+	LoaderCircleIcon,
+	SquircleDashedIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { type FC, useState } from "react";
@@ -77,6 +82,33 @@ const OpenInWalletButton: FC<{
 			onClick={() => openInWallet(props.lnInvoice)}
 		>
 			{t("client:paymentPage.wallets.external")}
+		</Button>
+	);
+};
+
+const CopyInvoiceButton: FC<{
+	lnInvoice: NonEmptyString;
+}> = (props) => {
+	const { t } = useTranslation();
+	const { copy, copied } = useClipboard();
+
+	return (
+		<Button
+			size={"lg"}
+			variant={"outline"}
+			className={"h-12"}
+			onClick={() =>
+				void copy(props.lnInvoice, {
+					customMessage: t("client:paymentPage.status.invoiceCopied"),
+				})
+			}
+		>
+			{copied ? (
+				<CheckIcon className={"size-4"} />
+			) : (
+				<CopyIcon className={"size-4"} />
+			)}
+			{t("client:paymentPage.actions.copyInvoice")}
 		</Button>
 	);
 };
@@ -315,8 +347,9 @@ export const PaymentScreen: FC<{
 									return copy(
 										props.screen.payload.payment.paymentSpecification.lnInvoice,
 										{
-											customMessage:
-												"LN invoice successfully copied to clipboard",
+											customMessage: t(
+												"client:paymentPage.status.invoiceCopied",
+											),
 										},
 									);
 								}}
@@ -373,6 +406,12 @@ export const PaymentScreen: FC<{
 													}
 												/>
 											)}
+											<CopyInvoiceButton
+												lnInvoice={
+													props.screen.payload.payment.paymentSpecification
+														.lnInvoice
+												}
+											/>
 										</ButtonGroup>
 									</div>
 								</div>

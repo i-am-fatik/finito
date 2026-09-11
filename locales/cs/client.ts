@@ -123,7 +123,8 @@ const locale = {
     "actions": {
       "pay": "Zaplatit",
       "refund": "Vrátit",
-      "copyShowQrInvoice": "Kopírovat a zobrazit QR fakturu"
+      "copyShowQrInvoice": "Kopírovat a zobrazit QR fakturu",
+      "copyInvoice": "Kopírovat fakturu"
     },
     "loading": {
       "preparingPayment": "Platba se připravuje",
@@ -132,7 +133,8 @@ const locale = {
     "status": {
       "paymentSuccessful": "Platba byla úspěšně zaplacena",
       "waitingForPayment": "Čekáme na vaši platbu",
-      "waitingForRefund": "Čekáme na vrácení platby"
+      "waitingForRefund": "Čekáme na vrácení platby",
+      "invoiceCopied": "Faktura je zkopírovaná"
     },
     "labels": {
       "rate": "kurz"
