@@ -152,11 +152,6 @@ export const syncBridgeTransfersProcess: BackgroundProcess = {
 
 			void (async () => {
 				while (!controller.signal.aborted) {
-					if (Date.now() >= payment.expirationIn * 1000) {
-						stopWatching(payment.id, PaymentWatchingStopReason.Timeout);
-						return;
-					}
-
 					try {
 						const outcome = await gateway.waitForPayment(
 							payment.gatewayPaymentId,
@@ -195,6 +190,11 @@ export const syncBridgeTransfersProcess: BackgroundProcess = {
 					}
 
 					await delay(retryDelayMs, controller.signal);
+
+					if (Date.now() >= payment.expirationIn * 1000) {
+						stopWatching(payment.id, PaymentWatchingStopReason.Timeout);
+						return;
+					}
 				}
 			})();
 		};

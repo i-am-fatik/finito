@@ -239,7 +239,8 @@ describe("syncBridgeTransfersProcess", () => {
 		expect(updates[0]?.values.stopReason).toBe(PaymentWatchingStopReason.Error);
 	});
 
-	it("times out an invoice that expired before the gateway was asked", async () => {
+	it("settles an expired invoice the gateway still holds a preimage for", async () => {
+		outcomes = [{ status: "paid", preimage: invoice.preimage }];
 		const { run, updates } = setupProcess({
 			expiresAtSec: Math.floor(Date.now() / 1000) - 1,
 		});
@@ -248,17 +249,38 @@ describe("syncBridgeTransfersProcess", () => {
 		await flushPendingWork();
 		stop();
 
-		expect(waitCalls).toHaveLength(0);
+		expect(waitCalls).toHaveLength(1);
 		expect(updates).toEqual([
 			{
 				table: "paymentWatchingState",
 				values: {
 					id: paymentId,
-					stoppedAt: expect.any(Number),
-					stopReason: PaymentWatchingStopReason.Timeout,
+					verifiedAt: expect.any(Number),
+					proveType: "lnBridge",
+					transactionId,
 				},
 			},
 		]);
+	});
+
+	it("times out an expired invoice the gateway does not answer for", async () => {
+		jest.useFakeTimers();
+		outcomes = [new Error("connection refused")];
+		const { run, updates } = setupProcess({
+			expiresAtSec: Math.floor(Date.now() / 1000) - 1,
+		});
+
+		const stop = await run();
+		await flushPendingWork();
+		jest.advanceTimersByTime(retryDelayMs);
+		await flushPendingWork();
+		stop();
+		jest.useRealTimers();
+
+		expect(waitCalls).toHaveLength(1);
+		expect(updates[0]?.values.stopReason).toBe(
+			PaymentWatchingStopReason.Timeout,
+		);
 	});
 
 	it("times out when the gateway reports the payment expired", async () => {
