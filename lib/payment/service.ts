@@ -149,9 +149,15 @@ type CreatePaymentAmountOrItems =
 	| {
 			items: (Omit<
 				EvoluSchemaType["paymentItemLine"],
-				"id" | "paymentId" | "catalogItemId" | "itemId"
+				| "id"
+				| "paymentId"
+				| "catalogItemId"
+				| "itemId"
+				| "posBillId"
+				| "posBillItemId"
 			> & {
 				item: Omit<EvoluSchemaType["item"], "id">;
+				posBill?: { billId: Id; itemId: Id };
 			})[];
 			totalAmount?: undefined;
 	  }
@@ -349,7 +355,10 @@ export const createPayment =
 		}
 
 		if (params.items) {
-			for (const [index, { item, ...line }] of params.items.entries()) {
+			for (const [
+				index,
+				{ item, posBill, ...line },
+			] of params.items.entries()) {
 				const itemId = createIdFromString(`${id}:billItem:${index}`);
 
 				const createdItem = await createItem(deps)({
@@ -362,6 +371,8 @@ export const createPayment =
 					paymentId: id,
 					catalogItemId: createdItem.catalogItemId,
 					itemId: createdItem.id,
+					posBillId: posBill?.billId ?? null,
+					posBillItemId: posBill?.itemId ?? null,
 				});
 			}
 		}

@@ -16,12 +16,13 @@ import { currencyConverter } from "@/lib/integrations/currency-converter/currenc
 import { createPaymentWithDefaultMethods } from "@/lib/payment/service";
 import {
 	Currency,
+	Integer,
 	NonEmptyString,
 	NonNegativeInteger,
-	type PositiveNumber,
-	TimestampMs,
+	PositiveNumber,
 	Uuid7,
 } from "@/lib/shared/types";
+import { formatMoney } from "@/lib/shared/utils/format";
 import {
 	tableEventMessageBus,
 	tableRequestMessageBus,
@@ -61,7 +62,6 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 				timeout: ReturnType<typeof setTimeout>;
 			}
 		>();
-		const startedAt = TimestampMs(Date.now());
 		const pending = pendingTablePayments();
 		const devices = await props.deviceEvolu.loadQuery(
 			createDeviceQuery((db) =>
@@ -200,7 +200,10 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 
 		const billScreenOf = (
 			bill: typeof posBillsQuery.Row | undefined,
-			paid: ReadonlyMap<Id, number> = new Map(),
+			view: {
+				paying?: ReadonlyMap<Id, number>;
+				settled?: ReadonlyMap<Id, number>;
+			} = {},
 		): Extract<ScreenData, { variant: "table" }>["payload"] => {
 			if (bill === undefined) {
 				return {
@@ -209,13 +212,18 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 			}
 
 			const itemLines = bill.items
-				.map((item) => ({
-					quantity: item.quantity - (paid.get(item.item.id) ?? 0),
-					optionality: {
-						checked: NonNegativeInteger(0),
-					},
-					item: item.item,
-				}))
+				.map((item) => {
+					const quantity =
+						item.quantity - (view.settled?.get(item.item.id) ?? 0);
+					return {
+						quantity,
+						paying: view.paying?.get(item.item.id) ?? 0,
+						optionality: {
+							checked: NonNegativeInteger(Math.max(quantity, 0)),
+						},
+						item: item.item,
+					};
+				})
 				.filter((line) => line.quantity > 0);
 
 			return {
@@ -229,29 +237,23 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 			};
 		};
 
-		const getBillByQrCode = (qrCodeId: NonEmptyString) =>
-			billScreenOf(findBillByQrCode(qrCodeId));
+		const getBillByQrCode = (qrCodeId: NonEmptyString) => {
+			const bill = findBillByQrCode(qrCodeId);
+			return billScreenOf(bill, {
+				paying:
+					bill === undefined
+						? undefined
+						: pending.quantitiesFor(bill.id, Date.now()),
+			});
+		};
 
-		const closeOutPaidLines = (paid: PendingTablePayment) => {
-			const bill = posBills.find((item) => item.id === paid.billId);
-			const billScreenData = billScreenOf(
-				bill,
-				new Map(paid.lines.map((line) => [line.itemId, line.quantity])),
-			);
-			if (bill !== undefined) {
-				for (const line of paid.lines) {
-					props.evolu.insert("posBillItemLine", {
-						posBillId: bill.id,
-						deviceId,
-						catalogItemId: line.catalogItemId,
-						itemId: line.itemId,
-						_tag: "remove",
-						totalAmount: line.totalAmount,
-						quantity: line.quantity,
-					});
-				}
-			}
+		const closeOutRemoveId = (paymentId: Id, posBillItemId: Id) =>
+			createIdFromString(`tableCloseout:${paymentId}:${posBillItemId}`);
 
+		const notifyPaymentFinished = (
+			paid: PendingTablePayment,
+			billScreenData: Extract<ScreenData, { variant: "table" }>["payload"],
+		) => {
 			tableEventMessageBus
 				.createInstance({
 					ndk: props.ndk,
@@ -351,10 +353,6 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 					})({
 						bill,
 						request: input.payment,
-						pendingQuantities:
-							bill === undefined
-								? new Map()
-								: pending.quantitiesFor(bill.id, Date.now()),
 					});
 
 					if (created.variant === "info") {
@@ -429,24 +427,144 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 			},
 		);
 
-		const settledSinceStartQuery = createQuery((db) =>
+		const settledTableLinesQuery = createQuery((db) =>
 			db
 				.selectFrom("paymentWatchingState")
-				.select(["paymentWatchingState.id as id"] as const)
+				.innerJoin(
+					"paymentItemLine",
+					"paymentItemLine.paymentId",
+					"paymentWatchingState.id",
+				)
+				.select([
+					"paymentWatchingState.id as paymentId",
+					"paymentItemLine.posBillId as posBillId",
+					"paymentItemLine.posBillItemId as posBillItemId",
+					"paymentItemLine.catalogItemId as catalogItemId",
+					"paymentItemLine.quantity as quantity",
+					"paymentItemLine.totalAmount as totalAmount",
+				] as const)
 				.where("paymentWatchingState.isDeleted", "is not", sqliteTrue)
-				.where("paymentWatchingState.verifiedAt", ">=", startedAt),
+				.where("paymentItemLine.isDeleted", "is not", sqliteTrue)
+				.where("paymentWatchingState.verifiedAt", "is not", null)
+				.where("paymentItemLine.posBillId", "is not", null)
+				.where("paymentItemLine.posBillItemId", "is not", null)
+				.where("paymentItemLine.quantity", "is not", null)
+				.where("paymentItemLine.totalAmount", "is not", null)
+				.$narrowType<{
+					posBillId: KyselyNotNull;
+					posBillItemId: KyselyNotNull;
+					quantity: KyselyNotNull;
+					totalAmount: KyselyNotNull;
+				}>(),
 		);
+
+		const closeOutSettledPayments = async (
+			rows: ReadonlyArray<typeof settledTableLinesQuery.Row>,
+		) => {
+			const lines = rows.map((row) => ({
+				...row,
+				removeId: closeOutRemoveId(row.paymentId, row.posBillItemId),
+			}));
+			if (lines.length === 0) {
+				return;
+			}
+
+			const written = await props.evolu.loadQuery(
+				createQuery((db) =>
+					db
+						.selectFrom("posBillItemLine")
+						.select(["posBillItemLine.id as id"] as const)
+						.where(
+							"posBillItemLine.id",
+							"in",
+							lines.map((line) => line.removeId),
+						),
+				),
+			);
+			const alreadyWritten = new Set(written.map((row) => row.id));
+			const byPayment = new Map<Id, typeof lines>();
+			for (const line of lines) {
+				if (alreadyWritten.has(line.removeId)) {
+					continue;
+				}
+				byPayment.set(line.paymentId, [
+					...(byPayment.get(line.paymentId) ?? []),
+					line,
+				]);
+			}
+
+			for (const [paymentId, paymentLines] of byPayment) {
+				const bill = posBills.find(
+					(candidate) => candidate.id === paymentLines[0]?.posBillId,
+				);
+				const settled = new Map<Id, number>();
+				let overpaidAmount = 0;
+
+				for (const line of paymentLines) {
+					const onBill = bill?.items.find(
+						(item) => item.item.id === line.posBillItemId,
+					);
+					const removable = Math.min(line.quantity, onBill?.quantity ?? 0);
+					if (removable < line.quantity) {
+						overpaidAmount += Math.round(
+							(line.totalAmount * (line.quantity - removable)) / line.quantity,
+						);
+					}
+					if (removable <= 0 || bill === undefined) {
+						continue;
+					}
+					props.evolu.upsert("posBillItemLine", {
+						id: line.removeId,
+						posBillId: line.posBillId,
+						deviceId,
+						catalogItemId: line.catalogItemId,
+						itemId: line.posBillItemId,
+						_tag: "remove",
+						totalAmount: Integer(
+							Math.round((line.totalAmount * removable) / line.quantity),
+						),
+						quantity: PositiveNumber(removable),
+					});
+					settled.set(line.posBillItemId, removable);
+				}
+
+				if (overpaidAmount > 0 && bill !== undefined) {
+					props.addNotification({
+						id: createIdFromString(`tableOverpaid:${paymentId}`),
+						title: props.t(
+							"components:notificationItem.backgroundTableProcessing.title",
+						),
+						type: "warning",
+						progress: null,
+						canBeClosed: true,
+						description: props.t(
+							"components:notificationItem.backgroundTableProcessing.overpaid",
+							{
+								amount: formatMoney({
+									value: Integer(overpaidAmount),
+									currency: bill.currency,
+								}),
+							},
+						),
+						isUnread: true,
+						timestamp: Date.now(),
+					});
+				}
+
+				const paid = pending.settle(paymentId);
+				if (paid !== undefined) {
+					notifyPaymentFinished(paid, billScreenOf(bill, { settled }));
+				}
+			}
+		};
 
 		const unsubscribeSettled = subscribeToEvoluQuery(
 			props.evolu,
-			settledSinceStartQuery,
+			settledTableLinesQuery,
 			(rows) => {
-				for (const row of rows) {
-					const paid = pending.settle(row.id);
-					if (paid !== undefined) {
-						closeOutPaidLines(paid);
-					}
-				}
+				void closeOutSettledPayments(rows).catch((error) => {
+					console.error(error);
+				});
 			},
 		);
 

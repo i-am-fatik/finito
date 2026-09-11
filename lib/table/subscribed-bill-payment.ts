@@ -89,14 +89,97 @@ const lightningInvoiceOf = async (evolu: EvoluDep["evolu"], paymentId: Id) => {
 	return undefined;
 };
 
+const mintedTablePayment = async (
+	evolu: EvoluDep["evolu"],
+	request: TablePaymentRequest,
+): Promise<TablePayment | undefined> => {
+	const payments = await evolu.loadQuery(
+		createQuery((db) =>
+			db
+				.selectFrom("payment")
+				.select(["totalAmount", "currency"] as const)
+				.where("id", "=", request.paymentId)
+				.where("isDeleted", "is not", sqliteTrue)
+				.where("totalAmount", "is not", null)
+				.where("currency", "is not", null)
+				.$narrowType<{
+					totalAmount: KyselyNotNull;
+					currency: KyselyNotNull;
+				}>(),
+		),
+	);
+	const payment = payments[0];
+	if (payment === undefined) {
+		return undefined;
+	}
+
+	const invoice = await lightningInvoiceOf(evolu, request.paymentId);
+	if (invoice === undefined) {
+		return undefined;
+	}
+
+	const storedLines = await evolu.loadQuery(
+		createQuery((db) =>
+			db
+				.selectFrom("paymentItemLine")
+				.select([
+					"posBillItemId",
+					"catalogItemId",
+					"quantity",
+					"totalAmount",
+				] as const)
+				.where("paymentId", "=", request.paymentId)
+				.where("isDeleted", "is not", sqliteTrue)
+				.where("posBillItemId", "is not", null)
+				.where("quantity", "is not", null)
+				.where("totalAmount", "is not", null)
+				.$narrowType<{
+					posBillItemId: KyselyNotNull;
+					quantity: KyselyNotNull;
+					totalAmount: KyselyNotNull;
+				}>(),
+		),
+	);
+
+	return {
+		variant: "payment",
+		payload: {
+			payment: {
+				id: NonEmptyString(request.paymentId),
+				direction: "outgoing",
+				totalAmount: payment.totalAmount,
+				currency: payment.currency,
+				paymentSpecification: {
+					type: "lnInvoice",
+					lnInvoice: invoice.lnInvoice,
+					paymentHash: invoice.paymentHash,
+					expirationIn: invoice.expirationIn,
+				},
+			},
+			...(request.merchant === undefined ? {} : { merchant: request.merchant }),
+		},
+		lines: storedLines.map((line) => ({
+			itemId: line.posBillItemId,
+			catalogItemId: line.catalogItemId,
+			quantity: PositiveNumber(line.quantity),
+			totalAmount: Integer(line.totalAmount),
+		})),
+		expiresAt: invoice.expirationIn * 1000,
+	};
+};
+
 export const paymentFromSubscribedBill =
 	(deps: TablePaymentDeps) =>
 	async (params: {
 		bill: OpenBill | undefined;
 		request: TablePaymentRequest;
-		pendingQuantities: ReadonlyMap<Id, number>;
 	}): Promise<TablePayment> => {
 		const { bill, request } = params;
+		const minted = await mintedTablePayment(deps.evolu, request);
+		if (minted !== undefined) {
+			return minted;
+		}
+
 		if (bill === undefined) {
 			return refused("The bill is no longer open.");
 		}
@@ -133,12 +216,10 @@ export const paymentFromSubscribedBill =
 		if (wanted.size === 0) {
 			return refused("Nothing is selected.");
 		}
-		for (const [itemId, { onBill, quantity }] of wanted) {
-			const left =
-				onBill.quantity - (params.pendingQuantities.get(itemId) ?? 0);
-			if (quantity <= 0 || quantity > left) {
+		for (const [, { onBill, quantity }] of wanted) {
+			if (quantity <= 0 || quantity > onBill.quantity) {
 				return refused(
-					`Only ${Math.max(left, 0)} of ${onBill.item.label} can still be paid.`,
+					`Only ${Math.max(onBill.quantity, 0)} of ${onBill.item.label} are on the bill.`,
 				);
 			}
 		}
@@ -199,6 +280,7 @@ export const paymentFromSubscribedBill =
 				quantity,
 				totalAmount,
 				optionalityChecked: null,
+				posBill: { billId: bill.id, itemId: row.id },
 				item: {
 					label: row.label,
 					price: row.price,

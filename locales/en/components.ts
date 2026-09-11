@@ -132,7 +132,8 @@ const locale = {
     },
     "backgroundTableProcessing": {
       "title": "Table processing is running",
-      "description": "This is only an indication that payment processing from the table is operational."
+      "description": "This is only an indication that payment processing from the table is operational.",
+      "overpaid": "A guest paid {{amount}} more than was left on the bill. Refund it or keep it as a tip."
     }
   },
   "themeToggle": {

@@ -53,6 +53,7 @@ export type ScreenData =
 					allowTip?: boolean;
 					itemLines: {
 						quantity: number;
+						paying?: number;
 						optionality?: {
 							checked: NonNegativeInteger;
 						};

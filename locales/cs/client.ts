@@ -7,7 +7,8 @@ const locale = {
       "noBill": "Momentálně zde není žádný účet."
     },
     "warning": {
-      "pcsLeft": "Zbývá {{count}} ks!"
+      "pcsLeft": "Zbývá {{count}} ks!",
+      "paying": "{{count}} ks právě někdo platí"
     }
   },
   "home": {

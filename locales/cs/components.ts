@@ -132,7 +132,8 @@ const locale = {
     },
     "backgroundTableProcessing": {
       "title": "Zpracování stolů běží",
-      "description": "Jedná se pouze o indikaci, že zpracování plateb ze stolu je funkční."
+      "description": "Jedná se pouze o indikaci, že zpracování plateb ze stolu je funkční.",
+      "overpaid": "Host zaplatil o {{amount}} víc, než na účtu zbývalo. Vraťte to, nebo to nechte jako dýško."
     }
   },
   "themeToggle": {

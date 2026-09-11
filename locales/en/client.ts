@@ -7,7 +7,8 @@ const locale = {
       "noBill": "There is currently no bill here."
     },
     "warning": {
-      "pcsLeft": "{{count}} pcs left!"
+      "pcsLeft": "{{count}} pcs left!",
+      "paying": "{{count}} pcs being paid right now"
     }
   },
   "home": {

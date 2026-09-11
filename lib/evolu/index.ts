@@ -660,6 +660,8 @@ export const AppSchema = {
 		paymentId: TableIdSchema,
 		catalogItemId: NullableTableIdSchema,
 		itemId: TableIdSchema,
+		posBillId: NullableTableIdSchema,
+		posBillItemId: NullableTableIdSchema,
 		quantity: z.number(),
 		totalAmount: IntegerSchema, // In invoice currency, not in item currency.
 		optionalityChecked: NonNegativeIntegerSchema.nullable(),

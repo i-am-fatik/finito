@@ -139,6 +139,15 @@ function NavItemComponent({
 									</span>
 								</CollapsibleContent>
 							</Collapsible>
+							{(itemLine.paying ?? 0) > 0 && (
+								<span
+									className={"text-xs text-muted-foreground flex gap-2 mt-2"}
+								>
+									{t("client:bill.warning.paying", {
+										count: itemLine.paying,
+									})}
+								</span>
+							)}
 						</motion.div>
 					</CounterCheckbox>
 				</div>

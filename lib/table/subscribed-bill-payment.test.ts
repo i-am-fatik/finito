@@ -76,6 +76,8 @@ const setup = (params?: {
 	invoice?: EvoluRow | null;
 	rate?: number | null;
 	walletFails?: boolean;
+	mintedPayment?: EvoluRow;
+	storedLines?: EvoluRow[];
 }) => {
 	const created: Parameters<TablePaymentDeps["createPayment"]>[0][] = [];
 	const conversions: { amount: number; currency: string }[] = [];
@@ -89,8 +91,16 @@ const setup = (params?: {
 			if (query.includes("productCodeValue")) {
 				return [itemRow(beerId, "Beer", 4500), itemRow(soupId, "Soup", 6000)];
 			}
+			if (query.includes("posBillItemId")) {
+				return params?.storedLines ?? [];
+			}
 			if (query.includes("paymentLnBridge")) {
 				return params?.invoice === null ? [] : [params?.invoice ?? invoiceRow];
+			}
+			if (query.includes("totalAmount")) {
+				return params?.mintedPayment === undefined
+					? []
+					: [params.mintedPayment];
 			}
 			return [];
 		},
@@ -113,12 +123,10 @@ const setup = (params?: {
 	const pay = (input?: {
 		bill?: OpenBill | undefined;
 		request?: TablePaymentRequest;
-		pendingQuantities?: ReadonlyMap<Id, number>;
 	}) =>
 		paymentFromSubscribedBill(deps)({
 			bill: input !== undefined && "bill" in input ? input.bill : bill,
 			request: input?.request ?? request(),
-			pendingQuantities: input?.pendingQuantities ?? new Map(),
 		});
 
 	return { pay, created, conversions };
@@ -188,12 +196,18 @@ describe("paymentFromSubscribedBill", () => {
 		).toEqual(refusal("Beer has a new price, reload the bill."));
 	});
 
-	it("refuses more than is left once other guests' pending payments count", async () => {
+	it("refuses more than the bill carries", async () => {
 		const { pay, created } = setup();
 
-		expect(await pay({ pendingQuantities: new Map([[beerId, 2]]) })).toEqual(
-			refusal("Only 1 of Beer can still be paid."),
-		);
+		expect(
+			await pay({
+				request: request({
+					items: [
+						{ id: beerId, price: Integer(4500), label: "Beer", quantity: 4 },
+					],
+				}),
+			}),
+		).toEqual(refusal("Only 3 of Beer are on the bill."));
 		expect(created).toHaveLength(0);
 	});
 
@@ -209,7 +223,64 @@ describe("paymentFromSubscribedBill", () => {
 					],
 				}),
 			}),
-		).toEqual(refusal("Only 3 of Beer can still be paid."));
+		).toEqual(refusal("Only 3 of Beer are on the bill."));
+	});
+
+	it("mints the whole remaining quantity even while another guest is paying", async () => {
+		const { pay, created } = setup();
+
+		const outcome = await pay({
+			request: request({
+				items: [
+					{ id: beerId, price: Integer(4500), label: "Beer", quantity: 3 },
+				],
+			}),
+		});
+
+		expect(outcome.variant).toBe("payment");
+		expect(created).toHaveLength(1);
+	});
+
+	it("returns the already minted invoice for a replayed payment id and mints nothing", async () => {
+		const { pay, created } = setup({
+			mintedPayment: { totalAmount: 9000, currency: Currency.CZK },
+			storedLines: [
+				{
+					posBillItemId: beerId,
+					catalogItemId: beerCatalogId,
+					quantity: 2,
+					totalAmount: 9000,
+				},
+			],
+		});
+
+		const replayed = await pay({ bill: undefined });
+
+		expect(created).toHaveLength(0);
+		if (replayed.variant !== "payment") {
+			throw new Error("expected the stored payment back");
+		}
+		expect<unknown>(replayed.payload.payment).toEqual({
+			id: paymentId,
+			direction: "outgoing",
+			totalAmount: 9000,
+			currency: "CZK",
+			paymentSpecification: {
+				type: "lnInvoice",
+				lnInvoice: "lnbc1invented",
+				paymentHash: "invented-hash",
+				expirationIn: invoiceExpiresAtSec,
+			},
+		});
+		expect<unknown>(replayed.lines).toEqual([
+			{
+				itemId: beerId,
+				catalogItemId: beerCatalogId,
+				quantity: 2,
+				totalAmount: 9000,
+			},
+		]);
+		expect(replayed.expiresAt).toBe(invoiceExpiresAtSec * 1000);
 	});
 
 	it("refuses an empty selection", async () => {
@@ -251,6 +322,7 @@ describe("paymentFromSubscribedBill", () => {
 						quantity: 2,
 						totalAmount: 9000,
 						optionalityChecked: null,
+						posBill: { billId, itemId: beerId },
 						item: {
 							label: "Beer",
 							price: 4500,
