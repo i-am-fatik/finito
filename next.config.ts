@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
 	output: "export",
 	distDir: isE2eBuild ? ".next-e2e" : ".next",
 	typedRoutes: true,
+	pageExtensions: isE2eBuild ? ["e2e.tsx", "tsx", "ts"] : ["tsx", "ts"],
 	experimental: {
 		viewTransition: true,
 	},
