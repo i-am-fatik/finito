@@ -24,7 +24,6 @@ export class TableDriver implements BillDriver {
 		screenStack,
 		ndk,
 	}: Parameters<BillDriver["subscribe"]>[0]) {
-		let isInsideThePayment = false;
 		let refusalTimeout: ReturnType<typeof setTimeout> | undefined;
 		const expectedSubscriptionId = Uuid7.random();
 		const [, pubkey = null, qrCodeIdFirstPart = null, ...rest] =
@@ -79,8 +78,6 @@ export class TableDriver implements BillDriver {
 				return;
 			}
 
-			isInsideThePayment = true;
-
 			screenStack.push(responseResult.value);
 		};
 
@@ -92,10 +89,6 @@ export class TableDriver implements BillDriver {
 			})
 			.listen({
 				billChange: async ({ billScreenData, subscriptionId }) => {
-					if (isInsideThePayment) {
-						return null;
-					}
-
 					if (
 						billScreenData === null ||
 						expectedSubscriptionId !== subscriptionId
@@ -125,8 +118,6 @@ export class TableDriver implements BillDriver {
 					) {
 						return null;
 					}
-
-					isInsideThePayment = true;
 
 					screenStack.replaceLast({
 						variant: "info",
@@ -180,10 +171,6 @@ export class TableDriver implements BillDriver {
 		}
 
 		const interval = setInterval(() => {
-			if (isInsideThePayment) {
-				return;
-			}
-
 			void tableRequestClient
 				.call(
 					"subscribeToBillByQrCode",
