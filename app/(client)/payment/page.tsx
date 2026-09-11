@@ -18,6 +18,7 @@ import { PaymentScreen } from "@/app/(client)/payment/components/payment-screen"
 import { ReservationScreen } from "@/app/(client)/payment/components/reservation-screen";
 import { TableScreen } from "@/app/(client)/payment/components/table-screen";
 import { FadeHeader } from "@/components/fade-header";
+import { LanguageToggle } from "@/components/language-toggle";
 import { useNostr } from "@/hooks/use-nostr";
 import { useOnMountUnsafe } from "@/hooks/use-on-mount-unsafe";
 import type {
@@ -37,8 +38,14 @@ const screenComponents = {
 	info: InfoScreen,
 } as Record<ScreenData["variant"], React.FC<{ screen: ScreenData }>>;
 
+const merchantNameOf = (screen: ScreenData) =>
+	screen.variant === "payment" || screen.variant === "table"
+		? screen.payload.merchant?.name
+		: undefined;
+
 const Screen: FC<{
 	screenAtom: Atom<ScreenData>;
+	merchantName?: string;
 	onHeaderBackClick?: () => void;
 }> = (props) => {
 	const screen = useAtomValue(props.screenAtom);
@@ -51,15 +58,15 @@ const Screen: FC<{
 	return (
 		<Suspense
 			fallback={
-				<FadeHeader customStartAddonOnClick={props.onHeaderBackClick} />
+				<FadeHeader
+					endAddon={<LanguageToggle />}
+					customStartAddonOnClick={props.onHeaderBackClick}
+				/>
 			}
 		>
 			<FadeHeader
-				title={
-					screen.variant === "payment" || screen.variant === "table"
-						? screen.payload.merchant?.name
-						: "Restaurace v pangejtu"
-				}
+				title={merchantNameOf(screen) ?? props.merchantName}
+				endAddon={<LanguageToggle />}
 				customStartAddonOnClick={props.onHeaderBackClick}
 			/>
 
@@ -210,12 +217,14 @@ export default function Page() {
 	});
 
 	const screen = screens[screens.length - 1] ?? fallbackScreen;
+	const rootScreen = useAtomValue(screens[0] ?? fallbackScreen);
 
 	return (
 		<div className="w-full flex flex-col justify-between min-h-full">
 			<div className={"h-24"} />
 			<Screen
 				screenAtom={screen}
+				merchantName={merchantNameOf(rootScreen)}
 				onHeaderBackClick={() => {
 					if (screens.length > 1) {
 						setScreens((screens) => screens.slice(0, -1));
