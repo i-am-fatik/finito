@@ -72,7 +72,9 @@ name is data, the folder is code, and renaming a table orphans its rows.
 
 ## Rules a module follows
 
-- One file, `lib/modules/<name>/<name>.ts`, exporting one `as const` per table.
+- One file, `lib/modules/<name>/<name>.ts`, exporting one table per name. The one
+  exception is `shared`, whose file is `schema.ts`, because it holds fragments
+  rather than tables.
 - It imports from `@/lib/shared/types`, `@/lib/evolu/types` and
   `@/lib/modules/shared/schema`, and never from `@/lib/evolu`. That is what
   keeps the composition acyclic.

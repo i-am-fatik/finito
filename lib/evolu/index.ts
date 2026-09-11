@@ -13,761 +13,216 @@ import {
 	type StandardSchemaV1,
 } from "@evolu/common";
 import { createRun } from "@evolu/web";
-import { z } from "zod";
 import { watchEvoluErrors } from "@/lib/diagnostics/collector";
 import { createFinitoEvoluDeps } from "@/lib/evolu/deps";
-import { AiAgentScope } from "@/lib/evolu/model/ai-agent";
-import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
-import { MenuStatus } from "@/lib/evolu/model/menu";
-import { PaymentMethod } from "@/lib/evolu/model/payment";
-import { PaymentDefaultMethodType } from "@/lib/evolu/model/payment-default-method";
-import { PaymentReceiptLineKind } from "@/lib/evolu/model/payment-receipt";
-import { PaymentWatchingStopReason } from "@/lib/evolu/model/payment-watching-state";
 import { TableIdSchema } from "@/lib/evolu/types";
 import {
-	ConstantSymbolSchema,
-	CountryCode,
-	Currency,
-	DateStringSchema,
-	EmailSchema,
-	ExchangeRateSource,
-	FiatCurrency,
-	HttpsUrlSchema,
-	IbanSchema,
-	IdentificationNumberCzSchema,
-	IntegerSchema,
-	NonEmptyString32Schema,
-	NonEmptyString255Schema,
-	NonEmptyStringSchema,
-	NonNegativeIntegerSchema,
-	NwcCredentialsSchema,
-	PercentSchema,
-	PhoneSchema,
-	PositiveIntegerSchema,
-	PositiveNumberSchema,
-	ProductCodeType,
-	SpecificSymbolSchema,
-	SqliteBoolSchema,
-	TimeStringSchema,
-	TimestampMsSchema,
-	TimestampSecSchema,
-	Timezone,
-	Uuid7Schema,
-	VariableSymbolSchema,
-} from "@/lib/shared/types";
-
-const AddressSchema = {
-	id: TableIdSchema,
-	street: NonEmptyString255Schema.nullable(),
-	descriptiveNumber: NonEmptyString32Schema.nullable(),
-	city: NonEmptyString255Schema.nullable(),
-	postalCode: NonEmptyString32Schema.nullable(),
-};
-
-const ContactSchema = {
-	id: TableIdSchema,
-	name: NonEmptyString255Schema,
-	label: NonEmptyString255Schema.nullable(),
-	email: EmailSchema.nullable(),
-	phone: PhoneSchema.nullable(),
-};
-
-const BillingInfoSchema = {
-	id: TableIdSchema,
-	countryCode: z.enum(CountryCode),
-};
-const BillingInfoCzSchema = {
-	id: TableIdSchema,
-	vatPayer: SqliteBoolSchema.nullable(),
-	identificationNumber: IdentificationNumberCzSchema.nullable(),
-	vatNumber: NonEmptyString255Schema.nullable(),
-	caseNumber: NonEmptyString255Schema.nullable(),
-};
-
-const NullableTableIdSchema = TableIdSchema.nullable();
-
-const Weekday = {
-	mon: "mon",
-	tue: "tue",
-	wed: "wed",
-	thu: "thu",
-	fri: "fri",
-	sat: "sat",
-	sun: "sun",
-} as const;
-
-const ItemSchema = {
-	id: TableIdSchema,
-	label: NonEmptyString255Schema,
-	// Stored in minor units for `priceCurrency` (e.g. cents, satoshis).
-	price: IntegerSchema,
-	unitOfMeasure: NonEmptyStringSchema.nullable(),
-	internalCode: NonEmptyStringSchema.nullable(),
-	productCodeType: z.enum(ProductCodeType).nullable(),
-	productCodeValue: NonEmptyStringSchema.nullable(),
-	categoryId: NullableTableIdSchema,
-	currency: z.enum(Currency),
-} as const;
+	account,
+	accountCashRegister,
+	accountIban,
+	accountLud16,
+	accountNwc,
+	accountSpark,
+	accountThunderBridge,
+} from "@/lib/modules/account/account";
+import {
+	aiAgent,
+	aiAgentScope,
+	aiAssistantSettings,
+} from "@/lib/modules/ai-assistant/ai-assistant";
+import {
+	billingInfo,
+	billingInfoAddress,
+	billingInfoCz,
+} from "@/lib/modules/billing-info/billing-info";
+import {
+	billingSettings,
+	invoiceEmailSettings,
+	invoiceSettings,
+} from "@/lib/modules/billing-settings/billing-settings";
+import { category } from "@/lib/modules/catalog-category/catalog-category";
+import { catalogItem } from "@/lib/modules/catalog-item/catalog-item";
+import { client, clientAddress, clientCz } from "@/lib/modules/client/client";
+import {
+	contact,
+	contactAccount,
+	contactAccountIban,
+	contactAccountLud16,
+	contactAddress,
+	contactBillingInfo,
+	contactBillingInfoCz,
+	contactNostr,
+} from "@/lib/modules/contact/contact";
+import { device } from "@/lib/modules/device/device";
+import { fioPlugin, fioPluginToken } from "@/lib/modules/fio-plugin/fio-plugin";
+import {
+	invoice,
+	invoiceCustomer,
+	invoiceCustomerAddress,
+	invoiceCustomerBillingInfo,
+	invoiceCustomerBillingInfoCz,
+	invoiceItemLine,
+	invoiceLastNumber,
+	invoiceNumberSeries,
+	invoiceSupplier,
+	invoiceSupplierAddress,
+	invoiceSupplierBillingInfo,
+	invoiceSupplierBillingInfoCz,
+	invoiceWatchingState,
+} from "@/lib/modules/invoice/invoice";
+import { item } from "@/lib/modules/item/item";
+import { menu, menuCategory, menuItemLine } from "@/lib/modules/menu/menu";
+import {
+	openingHoursExceptionDay,
+	openingHoursExceptionSlot,
+	openingHoursRegularSlot,
+	openingHoursSettings,
+} from "@/lib/modules/opening-hours/opening-hours";
+import {
+	payment,
+	paymentBankTransferCZ,
+	paymentCash,
+	paymentCounterparty,
+	paymentItemLine,
+	paymentLnBridge,
+	paymentLnNwc,
+	paymentLnSpark,
+	paymentLnZap,
+	paymentWatchingState,
+	paymentWebData,
+} from "@/lib/modules/payment/payment";
+import { paymentDefaultMethod } from "@/lib/modules/payment-default-method/payment-default-method";
+import {
+	paymentReceipt,
+	paymentReceiptItemLine,
+	paymentReceiptLastNumber,
+	paymentReceiptNumberSeries,
+	paymentReceiptSupplier,
+	paymentReceiptSupplierAddress,
+	paymentReceiptSupplierBillingInfo,
+	paymentReceiptSupplierBillingInfoCz,
+} from "@/lib/modules/payment-receipt/payment-receipt";
+import {
+	posBill,
+	posBillItemLine,
+	posBillRate,
+} from "@/lib/modules/pos-bill/pos-bill";
+import {
+	reconciliationClaim,
+	reconciliationClaimAllocation,
+} from "@/lib/modules/reconciliation-claim/reconciliation-claim";
+import {
+	reservation,
+	reservationBlock,
+	reservationBooking,
+} from "@/lib/modules/reservation/reservation";
+import { NullableTableIdSchema } from "@/lib/modules/shared/schema";
+import { smtp } from "@/lib/modules/smtp/smtp";
+import { table, tableCode } from "@/lib/modules/table/table";
+import { billingSettingsTaxRate } from "@/lib/modules/tax-rate/tax-rate";
+import {
+	transaction,
+	transactionCashRegister,
+	transactionIban,
+	transactionLud16,
+	transactionNwc,
+	transactionSpark,
+} from "@/lib/modules/transaction/transaction";
+import { waiter } from "@/lib/modules/waiter/waiter";
 
 export const AppSchema = {
-	category: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		name: NonEmptyString255Schema,
-	},
-	device: {
-		id: TableIdSchema,
-		name: NonEmptyString255Schema,
-		deviceType: z.string().nullable(),
-		deviceVendor: z.string().nullable(),
-		browserName: z.string().nullable(),
-		osName: z.string().nullable(),
-	},
-	catalogItem: {
-		...ItemSchema,
-		// Internal reference cost in item currency for margin checks.
-		costPrice: IntegerSchema.nullable(),
-		deviceId: TableIdSchema.nullable(),
-	},
-	item: {
-		...ItemSchema,
-		// Link to the original catalog item.
-		// It can be null when the item is used without original catalog item.
-		catalogItemId: NullableTableIdSchema,
-	},
-	menu: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		name: NonEmptyString255Schema,
-		// Workflow state of menu publication.
-		status: z.enum(MenuStatus),
-		validFrom: TimestampMsSchema.nullable(),
-		validTo: TimestampMsSchema.nullable(),
-		publishedAt: TimestampMsSchema.nullable(),
-	},
-	menuCategory: {
-		id: TableIdSchema,
-		menuId: TableIdSchema,
-		name: NonEmptyString255Schema,
-	},
-	menuItemLine: {
-		id: TableIdSchema,
-		menuCategoryId: TableIdSchema,
-		catalogItemId: NullableTableIdSchema,
-		itemId: TableIdSchema,
-		// `null` = available` for menu-specific availability.
-		availabilityStatus: z.enum(["soldOut", "hidden"]).nullable(),
-	},
-	table: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		label: NonEmptyString255Schema,
-		numberOfSeats: PositiveIntegerSchema,
-	},
-	tableCode: {
-		id: TableIdSchema,
-		tableId: TableIdSchema,
-		code: NonEmptyString255Schema,
-	},
-	waiter: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		name: NonEmptyString255Schema,
-	},
-	// Opening hours evaluation priority (highest to lowest):
-	// 1) openingHoursExceptionDay (+ openingHoursExceptionSlot for mode="custom")
-	// 2) global holiday policy in openingHoursSettings
-	// 3) openingHoursRegularSlot
-	openingHoursSettings: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		timezone: z.enum(Timezone),
-		holidayMode: z.enum(["manualOnly", "closeOnPublicHolidays"]),
-		holidayCountryCode: z.enum(CountryCode).nullable(),
-		holidayRegionCode: NonEmptyString32Schema.nullable(),
-		holidayObservedMode: z.enum(["none", "observed"]),
-	},
-	openingHoursRegularSlot: {
-		id: TableIdSchema,
-		openingHoursSettingsId: TableIdSchema,
-		weekday: z.enum(Weekday),
-		// Local wall-clock time in openingHoursSettings.timezone.
-		openMinute: TimeStringSchema,
-		// Local wall-clock time in openingHoursSettings.timezone.
-		closeMinute: TimeStringSchema,
-		sortOrder: NonNegativeIntegerSchema,
-		// Optional seasonal applicability for this regular slot.
-		validFrom: DateStringSchema.nullable(),
-		// Optional seasonal applicability for this regular slot.
-		validTo: DateStringSchema.nullable(),
-	},
-	openingHoursExceptionDay: {
-		id: TableIdSchema,
-		openingHoursSettingsId: TableIdSchema,
-		date: DateStringSchema,
-		mode: z.enum(["closed", "custom"]),
-		note: NonEmptyString255Schema.nullable(),
-	},
-	openingHoursExceptionSlot: {
-		id: TableIdSchema,
-		openingHoursExceptionDayId: TableIdSchema,
-		// Local wall-clock time in openingHoursSettings.timezone.
-		openMinute: TimeStringSchema,
-		// Local wall-clock time in openingHoursSettings.timezone.
-		closeMinute: TimeStringSchema,
-		sortOrder: NonNegativeIntegerSchema,
-	},
-	posBill: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		displayId: PositiveIntegerSchema,
-		label: NonEmptyString255Schema.nullable(),
-		currency: z.enum(Currency),
-		tableId: NullableTableIdSchema,
-		paymentId: NullableTableIdSchema,
-		closedAt: TimestampMsSchema.nullable(),
-	},
-	posBillItemLine: {
-		id: TableIdSchema,
-		posBillId: TableIdSchema,
-		// Device that created this bill item change event.
-		deviceId: TableIdSchema.nullable(),
-		// Original catalog item reference kept for audit/debugging.
-		// Bill projection intentionally merges by `itemId` only.
-		catalogItemId: NullableTableIdSchema,
-		// Stable snapshot of the item at the time the change was recorded.
-		itemId: TableIdSchema,
-		// Append-only change type. Existing rows must never be mutated in place.
-		_tag: z.enum(["add", "remove"]),
-		// Positive amount of this event in bill currency.
-		totalAmount: IntegerSchema,
-		// Positive quantity of this event. The sign is represented by `_tag`.
-		quantity: PositiveNumberSchema,
-	},
-	posBillRate: {
-		id: TableIdSchema,
-		billId: TableIdSchema,
-		currency: z.enum(Currency),
-		// Exchange rate from bill currency to `currency`.
-		rate: z.number(),
-	},
-	reservation: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		tableId: NullableTableIdSchema,
-		note: NonEmptyStringSchema.nullable(),
-		// Reservation type discriminator (booking/block/...).
-		_tag: z.enum(["booking", "block"]),
-		// Epoch milliseconds.
-		startAt: TimestampMsSchema,
-		// Epoch milliseconds.
-		endAt: TimestampMsSchema,
-	},
-	reservationBooking: {
-		id: TableIdSchema,
-		name: NonEmptyString255Schema,
-		phone: PhoneSchema.nullable(),
-		email: EmailSchema.nullable(),
-		numberOfPeople: PositiveIntegerSchema,
-		approvalStatus: z.enum(["pending", "approved", "rejected"]),
-		serviceStatus: z.enum(["upcoming", "seated", "noShow", "completed"]),
-		statusReason: NonEmptyStringSchema.nullable(),
-		source: z.enum(["manual", "phone", "web"]).nullable(),
-	},
-	reservationBlock: {
-		id: TableIdSchema,
-		label: NonEmptyString255Schema,
-	},
-	account: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		name: NonEmptyString255Schema,
-		// Account kind discriminator
-		_tag: z.enum([
-			"accountIban",
-			"accountLud16",
-			"accountSpark",
-			"accountNwc",
-			"accountThunderBridge",
-			"accountCashRegister",
-		]),
-	},
-	accountIban: {
-		id: TableIdSchema,
-		iban: IbanSchema,
-		currency: z.enum(FiatCurrency),
-	},
-	accountLud16: {
-		id: TableIdSchema,
-		lud16: EmailSchema,
-		gatewayUrl: HttpsUrlSchema.nullable(),
-		gatewayToken: NonEmptyString255Schema.nullable(),
-	},
-	accountThunderBridge: {
-		id: TableIdSchema,
-		gatewayUrl: HttpsUrlSchema,
-		gatewayToken: NonEmptyString255Schema.nullable(),
-		lud16: EmailSchema.nullable(),
-		iban: IbanSchema.nullable(),
-		fioReadToken: NonEmptyString255Schema.nullable(),
-	},
-	accountSpark: {
-		id: TableIdSchema,
-		mnemonic: NonEmptyString255Schema,
-	},
-	accountNwc: {
-		id: TableIdSchema,
-		credentials: NwcCredentialsSchema,
-	},
-	accountCashRegister: {
-		id: TableIdSchema,
-		currency: z.enum(FiatCurrency),
-	},
-	transaction: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		// Logical account this transaction belongs to (bank, LN wallet, cash register...).
-		accountId: TableIdSchema,
-		// Transaction kind discriminator (incoming/outgoing/internal transfer legs...).
-		_tag: z.enum([
-			"accountSpark",
-			"accountLud16",
-			"accountIban",
-			"accountNwc",
-			"accountThunderBridge",
-			"accountCashRegister",
-		]),
-		// Signed amount in the smallest unit of account currency.
-		amount: IntegerSchema,
-		currency: z.enum(Currency),
-		// Epoch milliseconds.
-		occurredAt: TimestampMsSchema,
-		note: NonEmptyStringSchema.nullable(),
-		// Shared id for both legs of one internal transfer.
-		internalTransferGroupId: NonEmptyString255Schema.nullable(),
-	},
-	reconciliationClaim: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		// Source of settlement evidence (bankTransaction/manual/cash/terminal/...).
-		sourceType: z.enum(["transaction"]),
-		// Identifier unique within `sourceType`. For manual sourceType use the same value as reconciliationClaim.id
-		sourceId: TableIdSchema,
-		// Target entity type currently expected as payment or invoice.
-		entityType: z.enum(["payment", "invoice"]),
-		entityId: TableIdSchema,
-		// Confidence score used by reconciliation ordering.
-		confidence: z.number(),
-		// Matching or override rule identifier.
-		rule: z.enum([
-			"lnPaymentHash",
-			"bankVariableSymbol",
-			"manualCashRegisterSettlement",
-		]),
-		// Optional actor/process identifier that authored this claim.
-		createdBy: z
-			.enum([
-				"syncLnZapTransfersProcess",
-				"syncSparkTransfersProcess",
-				"syncNwcTransfersProcess",
-				"syncBridgeTransfersProcess",
-				"syncFioTransfersProcess",
-				"adminPaymentsDetail",
-				"posBillCharge",
-			])
-			.nullable(),
-	},
-	reconciliationClaimAllocation: {
-		id: TableIdSchema,
-		// FK-like reference to reconciliationClaim.id.
-		claimId: TableIdSchema,
-		// Allocation bucket: product/tip/overpayment/refund.
-		componentType: z.enum(["product", "tip", "overpayment", "fee"]),
-		// Signed minor units (allows correction rows).
-		amount: IntegerSchema,
-	},
-	transactionIban: {
-		id: TableIdSchema,
-		variableSymbol: VariableSymbolSchema.nullable(),
-		constantSymbol: ConstantSymbolSchema.nullable(),
-		specificSymbol: SpecificSymbolSchema.nullable(),
-		// Provider-specific payment reference from bank statement.
-		bankReference: NonEmptyString255Schema.nullable(),
-	},
-	transactionLud16: {
-		id: TableIdSchema,
-		// Raw BOLT11 invoice, optional for imported transactions.
-		lnInvoice: NonEmptyStringSchema.nullable(),
-		// Payment hash for LN reconciliation.
-		paymentHash: NonEmptyStringSchema,
-	},
-	transactionSpark: {
-		id: TableIdSchema,
-		// Transfer id from Spark API for deduplication.
-		sparkTransferId: NonEmptyStringSchema,
-		lnInvoice: NonEmptyStringSchema,
-		// Proof of settlement returned by Spark.
-		preImage: NonEmptyStringSchema,
-		// Payment hash for LN reconciliation.
-		paymentHash: NonEmptyStringSchema,
-	},
-	transactionNwc: {
-		id: TableIdSchema,
-		nwcEventId: NonEmptyStringSchema.nullable(),
-		nwcRequestId: NonEmptyStringSchema.nullable(),
-	},
-	transactionCashRegister: {
-		id: TableIdSchema,
-	},
-	client: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		name: NonEmptyString255Schema,
-		label: NonEmptyString255Schema.nullable(),
-		email: EmailSchema.nullable(),
-		countryCode: z.enum(CountryCode),
-	},
-	clientAddress: AddressSchema,
-	clientCz: {
-		id: TableIdSchema,
-		vatPayer: SqliteBoolSchema.nullable(),
-		identificationNumber: IdentificationNumberCzSchema.nullable(),
-		vatNumber: NonEmptyString255Schema.nullable(),
-		caseNumber: NonEmptyString255Schema.nullable(),
-	},
-	contact: {
-		...ContactSchema,
-		deviceId: TableIdSchema.nullable(),
-	},
-	contactAccount: {
-		id: TableIdSchema,
-		contactId: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		name: NonEmptyString255Schema.nullable(),
-		// Account kind discriminator
-		_tag: z.enum(["accountIban", "accountLud16"]),
-	},
-	contactAccountIban: {
-		id: TableIdSchema,
-		iban: IbanSchema,
-		currency: z.enum(FiatCurrency),
-	},
-	contactAccountLud16: {
-		id: TableIdSchema,
-		lud16: EmailSchema,
-	},
-	contactNostr: {
-		id: TableIdSchema,
-		contactId: TableIdSchema,
-		npub: NonEmptyStringSchema,
-		name: NonEmptyString255Schema.nullable(),
-	},
-	contactAddress: AddressSchema,
-	contactBillingInfo: {
-		id: TableIdSchema,
-		countryCode: z.enum(CountryCode),
-	},
-	contactBillingInfoCz: {
-		id: TableIdSchema,
-		vatPayer: SqliteBoolSchema.nullable(),
-		identificationNumber: IdentificationNumberCzSchema.nullable(),
-		vatNumber: NonEmptyString255Schema.nullable(),
-		caseNumber: NonEmptyString255Schema.nullable(),
-	},
-	billingInfo: BillingInfoSchema,
-	billingInfoAddress: AddressSchema,
-	billingInfoCz: BillingInfoCzSchema,
-	fioPlugin: {
-		id: TableIdSchema,
-		apiUrl: HttpsUrlSchema,
-		// Polling interval in seconds.
-		numberOfSecondsBetweenChecks: PositiveIntegerSchema,
-		// Hard switch for FIO sync background process.
-		isActive: SqliteBoolSchema,
-	},
-	fioPluginToken: {
-		id: TableIdSchema,
-		// FK to owning FIO plugin configuration.
-		fioPluginId: TableIdSchema,
-		token: NonEmptyString255Schema,
-	},
-	invoiceNumberSeries: {
-		id: TableIdSchema,
-		// Number of digits used for left-padded sequence in generated invoice number.
-		serialNumberDigits: PositiveIntegerSchema,
-		yearFormat: z.enum(["default", "short"]),
-		monthFormat: z.enum(["default", "hidden"]),
-		dayFormat: z.enum(["default", "hidden"]),
-		prefix: NonEmptyString32Schema.nullable(),
-	},
-	invoiceLastNumber: {
-		id: TableIdSchema,
-		// Last used serial number for invoice generation.
-		serialNumber: NonNegativeIntegerSchema,
-		// Anchor date used for reset logic depending on configured formats.
-		date: DateStringSchema.nullable(),
-	},
-	paymentReceiptNumberSeries: {
-		id: TableIdSchema,
-		// Number of digits used for left-padded sequence in generated receipt number.
-		serialNumberDigits: PositiveIntegerSchema,
-		yearFormat: z.enum(["default", "short"]),
-		monthFormat: z.enum(["default", "hidden"]),
-		dayFormat: z.enum(["default", "hidden"]),
-		prefix: NonEmptyString32Schema.nullable(),
-	},
-	paymentReceiptLastNumber: {
-		id: TableIdSchema,
-		// Last used serial number for receipt generation.
-		serialNumber: NonNegativeIntegerSchema,
-		// Anchor date used for reset logic depending on configured formats.
-		date: DateStringSchema.nullable(),
-	},
-	smtp: {
-		id: TableIdSchema,
-		server: NonEmptyStringSchema,
-		port: PositiveIntegerSchema,
-		username: NonEmptyStringSchema,
-		password: NonEmptyStringSchema,
-		name: NonEmptyStringSchema.nullable(),
-		email: EmailSchema,
-	},
-	aiAssistantSettings: {
-		id: TableIdSchema,
-		googleApiKey: NonEmptyStringSchema.nullable(),
-	},
-	aiAgent: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		label: NonEmptyString255Schema,
-		tokenHash: NonEmptyStringSchema,
-		lastUsedAt: TimestampMsSchema.nullable(),
-	},
-	aiAgentScope: {
-		id: TableIdSchema,
-		aiAgentId: TableIdSchema,
-		scope: z.enum(AiAgentScope),
-	},
-	billingSettings: {
-		id: TableIdSchema,
-		ownContactId: TableIdSchema.nullable(),
-		venueName: NonEmptyString255Schema.nullable(),
-		defaultCurrency: z.enum(Currency),
-		defaultTimezone: z.enum(Timezone),
-		exchangeRateSource: z.enum(ExchangeRateSource).nullable(),
-		// Optional FK to account row used for bank transfer defaults.
-		defaultPaymentMethodBankAccountKey: NullableTableIdSchema,
-		defaultPaymentMethod: z.enum(PaymentMethod),
-		// Optional FK to payment option config rows.
-		defaultBankTransferCzKey: NullableTableIdSchema,
-		defaultLnZapKey: NullableTableIdSchema,
-		defaultLnSparkKey: NullableTableIdSchema,
-	},
-	invoiceSettings: {
-		id: TableIdSchema,
-		defaultDueDateDays: NonNegativeIntegerSchema,
-		// Persisted invoice payment method used as default for new invoices.
-		defaultPaymentMethod: z.enum(InvoicePaymentMethod).nullable(),
-	},
-	invoiceEmailSettings: {
-		id: TableIdSchema,
-		enable: SqliteBoolSchema,
-		subject: NonEmptyString255Schema.nullable(),
-		// Templated email body that can include placeholders.
-		body: NonEmptyStringSchema.nullable(),
-	},
-	billingSettingsTaxRate: {
-		id: TableIdSchema,
-		name: NonEmptyString255Schema.nullable(),
-		rate: PercentSchema,
-	},
-	paymentDefaultMethod: {
-		id: TableIdSchema,
-		type: z.enum(PaymentDefaultMethodType),
-		accountId: TableIdSchema,
-		pausedAt: TimestampMsSchema.nullable(),
-	},
-	invoice: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		invoiceId: Uuid7Schema,
-		invoiceNumber: NonEmptyString255Schema,
-		issueDate: DateStringSchema,
-		dueDate: DateStringSchema,
-		currency: z.enum(Currency),
-		paymentMethod: z.enum(InvoicePaymentMethod),
-		paymentIban: IbanSchema.nullable(),
-	},
-	invoiceCustomer: {
-		...ContactSchema,
-		sourceContactId: NullableTableIdSchema,
-	},
-	invoiceCustomerAddress: AddressSchema,
-	invoiceCustomerBillingInfo: BillingInfoSchema,
-	invoiceCustomerBillingInfoCz: BillingInfoCzSchema,
-	invoiceSupplier: {
-		...ContactSchema,
-		sourceContactId: NullableTableIdSchema,
-	},
-	invoiceSupplierAddress: AddressSchema,
-	invoiceSupplierBillingInfo: BillingInfoSchema,
-	invoiceSupplierBillingInfoCz: BillingInfoCzSchema,
-	invoiceItemLine: {
-		id: TableIdSchema,
-		invoiceId: TableIdSchema,
-		catalogItemId: NullableTableIdSchema,
-		itemId: TableIdSchema,
-		quantity: z.number(),
-		totalAmount: IntegerSchema, // In invoice currency, not in item currency.
-	},
-	invoiceWatchingState: {
-		id: TableIdSchema,
-		// Epoch milliseconds when watcher marked payment as verified.
-		verifiedAt: TimestampMsSchema.nullable(),
-		// Verification source/type
-		proveType: z.enum(["lnZap", "lnSpark"]).nullable(),
-		// Related transaction id created by verification process.
-		transactionId: NullableTableIdSchema,
-		// Epoch milliseconds when active watching was interrupted.
-		stoppedAt: TimestampMsSchema.nullable(),
-		// Reason for stopping active watching.
-		stopReason: z.enum(PaymentWatchingStopReason).nullable(),
-	},
-	payment: {
-		id: TableIdSchema,
-		deviceId: TableIdSchema.nullable(),
-		// Payment flow type discriminator (static/dynamic/...).
-		// type: z.enum(["lnZap", "lnSpark", "bankTransferCZ", "cash"]),
-		direction: z.enum(["incoming", "outgoing"]),
-		// Includes tipAmount and sum of all paymentItems
-		totalAmount: IntegerSchema,
-		currency: z.enum(Currency),
-		// Optional expected tip amount in minor units.
-		tipAmount: NonNegativeIntegerSchema.nullable(),
-	},
-	paymentCounterparty: {
-		...ContactSchema,
-		sourceContactId: NullableTableIdSchema,
-	},
-	paymentWebData: {
-		id: TableIdSchema,
-		merchantName: NonEmptyStringSchema.nullable(),
-		// Optional tag/event emitted after successful settlement.
-		onSuccessfulPaymentTag: z.enum(["httpRedirect"]).nullable(),
-		// Optional redirect after successful settlement.
-		onSuccessfulPaymentRedirectUrl: HttpsUrlSchema.nullable(),
-		privateKey: NonEmptyStringSchema,
-		// // External event id used by web payment flow.
-		webPaymentEventId: NonEmptyStringSchema,
-	},
-	// It's optional. The payment does not have to contain the definition of the items.
-	paymentItemLine: {
-		id: TableIdSchema,
-		paymentId: TableIdSchema,
-		catalogItemId: NullableTableIdSchema,
-		itemId: TableIdSchema,
-		posBillId: NullableTableIdSchema,
-		posBillItemId: NullableTableIdSchema,
-		quantity: z.number(),
-		totalAmount: IntegerSchema, // In invoice currency, not in item currency.
-		optionalityChecked: NonNegativeIntegerSchema.nullable(),
-	},
-	paymentLnZap: {
-		id: TableIdSchema,
-		// Target account for mirrored incoming LN transaction after verification.
-		accountId: TableIdSchema,
-		lnInvoice: NonEmptyStringSchema,
-		// Payment hash for LN reconciliation.
-		paymentHash: NonEmptyStringSchema,
-		privateKey: NonEmptyStringSchema,
-		walletPubkey: NonEmptyStringSchema,
-		// Satoshis.
-		amount: NonNegativeIntegerSchema,
-		// UNIX timestamp in seconds (invoice expiry).
-		expirationIn: TimestampSecSchema,
-	},
-	paymentLnSpark: {
-		id: TableIdSchema,
-		accountId: TableIdSchema,
-		lnInvoice: NonEmptyStringSchema,
-		// Payment hash for LN reconciliation.
-		paymentHash: NonEmptyStringSchema,
-		// Identifier returned by Spark invoice API.
-		sparkInvoiceId: NonEmptyStringSchema,
-		// Satoshis.
-		amount: NonNegativeIntegerSchema,
-		// UNIX timestamp in seconds (invoice expiry).
-		expirationIn: TimestampSecSchema,
-	},
-	paymentLnNwc: {
-		id: TableIdSchema,
-		accountId: TableIdSchema,
-		lnInvoice: NonEmptyStringSchema,
-		// Payment hash for LN reconciliation.
-		paymentHash: NonEmptyStringSchema,
-		// Satoshis.
-		amount: NonNegativeIntegerSchema,
-		// UNIX timestamp in seconds (invoice expiry).
-		expirationIn: TimestampSecSchema,
-	},
-	paymentLnBridge: {
-		id: TableIdSchema,
-		accountId: TableIdSchema,
-		lnInvoice: NonEmptyStringSchema,
-		paymentHash: NonEmptyStringSchema,
-		gatewayPaymentId: NonEmptyString255Schema,
-		amount: NonNegativeIntegerSchema,
-		expirationIn: TimestampSecSchema,
-	},
-	paymentBankTransferCZ: {
-		id: TableIdSchema,
-		iban: IbanSchema,
-		variableSymbol: VariableSymbolSchema,
-	},
-	paymentCash: {
-		id: TableIdSchema,
-		// Cash register account where the cash settlement is recorded.
-		accountId: NullableTableIdSchema,
-	},
-	paymentWatchingState: {
-		id: TableIdSchema,
-		// Epoch milliseconds when watcher marked payment as verified.
-		verifiedAt: TimestampMsSchema.nullable(),
-		// Verification source/type
-		proveType: z
-			.enum(["lnZap", "lnSpark", "lnNwc", "lnBridge", "bankTransferCZ"])
-			.nullable(),
-		// Related transaction id created by verification process.
-		transactionId: NullableTableIdSchema,
-		// Epoch milliseconds when active watching was interrupted.
-		stoppedAt: TimestampMsSchema.nullable(),
-		// Reason for stopping active watching.
-		stopReason: z.enum(PaymentWatchingStopReason).nullable(),
-	},
-	paymentReceipt: {
-		id: TableIdSchema,
-		deviceId: NullableTableIdSchema,
-		receiptNumber: NonEmptyString255Schema,
-		issuedAt: TimestampMsSchema,
-		paymentCreatedAt: NonEmptyString255Schema,
-		totalAmount: IntegerSchema,
-		currency: z.enum(Currency),
-	},
-	paymentReceiptSupplier: ContactSchema,
-	paymentReceiptSupplierAddress: AddressSchema,
-	paymentReceiptSupplierBillingInfo: BillingInfoSchema,
-	paymentReceiptSupplierBillingInfoCz: BillingInfoCzSchema,
-	paymentReceiptItemLine: {
-		id: TableIdSchema,
-		paymentReceiptId: TableIdSchema,
-		kind: z.enum(PaymentReceiptLineKind),
-		sortOrder: PositiveIntegerSchema,
-		label: NonEmptyString255Schema.nullable(),
-		quantity: z.number(),
-		unitOfMeasure: NonEmptyStringSchema.nullable(),
-		unitPrice: IntegerSchema,
-		totalAmount: IntegerSchema,
-	},
+	category,
+	device,
+	catalogItem,
+	item,
+	menu,
+	menuCategory,
+	menuItemLine,
+	table,
+	tableCode,
+	waiter,
+	openingHoursSettings,
+	openingHoursRegularSlot,
+	openingHoursExceptionDay,
+	openingHoursExceptionSlot,
+	posBill,
+	posBillItemLine,
+	posBillRate,
+	reservation,
+	reservationBooking,
+	reservationBlock,
+	account,
+	accountIban,
+	accountLud16,
+	accountThunderBridge,
+	accountSpark,
+	accountNwc,
+	accountCashRegister,
+	transaction,
+	reconciliationClaim,
+	reconciliationClaimAllocation,
+	transactionIban,
+	transactionLud16,
+	transactionSpark,
+	transactionNwc,
+	transactionCashRegister,
+	client,
+	clientAddress,
+	clientCz,
+	contact,
+	contactAccount,
+	contactAccountIban,
+	contactAccountLud16,
+	contactNostr,
+	contactAddress,
+	contactBillingInfo,
+	contactBillingInfoCz,
+	billingInfo,
+	billingInfoAddress,
+	billingInfoCz,
+	fioPlugin,
+	fioPluginToken,
+	invoiceNumberSeries,
+	invoiceLastNumber,
+	paymentReceiptNumberSeries,
+	paymentReceiptLastNumber,
+	smtp,
+	aiAssistantSettings,
+	aiAgent,
+	aiAgentScope,
+	billingSettings,
+	invoiceSettings,
+	invoiceEmailSettings,
+	billingSettingsTaxRate,
+	paymentDefaultMethod,
+	invoice,
+	invoiceCustomer,
+	invoiceCustomerAddress,
+	invoiceCustomerBillingInfo,
+	invoiceCustomerBillingInfoCz,
+	invoiceSupplier,
+	invoiceSupplierAddress,
+	invoiceSupplierBillingInfo,
+	invoiceSupplierBillingInfoCz,
+	invoiceItemLine,
+	invoiceWatchingState,
+	payment,
+	paymentCounterparty,
+	paymentWebData,
+	paymentItemLine,
+	paymentLnZap,
+	paymentLnSpark,
+	paymentLnNwc,
+	paymentLnBridge,
+	paymentBankTransferCZ,
+	paymentCash,
+	paymentWatchingState,
+	paymentReceipt,
+	paymentReceiptSupplier,
+	paymentReceiptSupplierAddress,
+	paymentReceiptSupplierBillingInfo,
+	paymentReceiptSupplierBillingInfoCz,
+	paymentReceiptItemLine,
 } satisfies RawEvoluSchema;
 
 export const createQuery = createQueryBuilder(AppSchema);
