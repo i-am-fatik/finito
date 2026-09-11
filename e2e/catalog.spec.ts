@@ -74,7 +74,7 @@ test("creates a new catalog item from the list page", async ({
 		page.getByRole("link", { name: itemTableActions["new-item"] }).click(),
 	]);
 	await page.getByLabel(itemFormLabels.label).fill(label);
-	await page.getByLabel(itemFormLabels.price).fill("123");
+	await page.getByLabel(itemFormLabels.price, { exact: true }).fill("123");
 	await page.getByRole("button", { name: "Save" }).click();
 
 	await expect(page).toHaveURL(/\/admin\/catalog$/, { timeout: 20_000 });
@@ -269,7 +269,7 @@ test("updates a catalog item from the edit page", async ({
 	).toBeVisible();
 
 	await page.getByLabel(itemFormLabels.label).fill(updatedLabel);
-	await page.getByLabel(itemFormLabels.price).fill("456");
+	await page.getByLabel(itemFormLabels.price, { exact: true }).fill("456");
 	await page.getByRole("button", { name: autoFormActions.save }).click();
 
 	await expect(page).toHaveURL(
@@ -305,7 +305,7 @@ test("filters catalog items by label on the list page", async ({
 		page.getByRole("link", { name: itemTableActions["new-item"] }).click(),
 	]);
 	await page.getByLabel(itemFormLabels.label).fill(createdLabel);
-	await page.getByLabel(itemFormLabels.price).fill("789");
+	await page.getByLabel(itemFormLabels.price, { exact: true }).fill("789");
 	await page.getByRole("button", { name: autoFormActions.save }).click();
 
 	await expect(page).toHaveURL(/\/admin\/catalog$/, { timeout: 20_000 });

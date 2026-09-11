@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { relayPort } from "./e2e/helpers/nostr-relay";
 
 const port = 3000;
 const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL;
@@ -25,14 +26,24 @@ export default defineConfig({
 			},
 		},
 	],
-	webServer: externalBaseURL
-		? undefined
-		: {
-				command: "bun run e2e:serve",
-				url: baseURL,
-				reuseExistingServer: !process.env.CI,
-				timeout: 240_000,
-			},
+	webServer: [
+		{
+			command: "bun run e2e:relay",
+			url: `http://127.0.0.1:${relayPort}`,
+			reuseExistingServer: true,
+			timeout: 120_000,
+		},
+		...(externalBaseURL
+			? []
+			: [
+					{
+						command: "bun run e2e:serve",
+						url: baseURL,
+						reuseExistingServer: !process.env.CI,
+						timeout: 240_000,
+					},
+				]),
+	],
 });
 
 export { baseURL };

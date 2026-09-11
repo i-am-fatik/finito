@@ -11,7 +11,9 @@ import type {
 
 export const openHarness = async (page: Page) => {
 	await page.goto("/e2e");
-	await expect(page.getByTestId("e2e-status")).toHaveText("status:ready");
+	await expect(page.getByTestId("e2e-status")).toHaveText("status:ready", {
+		timeout: 60_000,
+	});
 };
 
 export const resetBrowserState = async (page: Page) => {

@@ -94,6 +94,7 @@ export const createE2eAppEvolu = async (mnemonic: Mnemonic) =>
 
 export const ensureBillingSettings = async (
 	evolu: Awaited<ReturnType<typeof createAppEvolu>>,
+	options?: { venueName?: string },
 ) => {
 	await new Promise<void>((resolve) => {
 		evolu.upsert(
@@ -101,6 +102,10 @@ export const ensureBillingSettings = async (
 			{
 				id: createIdFromString(""),
 				ownContactId: null,
+				venueName:
+					options?.venueName === undefined
+						? null
+						: NonEmptyString255(options.venueName),
 				defaultCurrency: FiatCurrency.CZK,
 				defaultTimezone: Timezone["Europe/Prague"],
 				defaultPaymentMethodBankAccountKey: null,

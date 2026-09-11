@@ -4,6 +4,7 @@ import { bech32, hex } from "@scure/base";
 const paymentHashTag = 1;
 const expiryTag = 6;
 const descriptionTag = 13;
+const descriptionHashTag = 23;
 const timestampWordCount = 7;
 const tagLengthWordCount = 2;
 const signatureByteCount = 65;
@@ -46,6 +47,7 @@ export const testLightningInvoice = (params: {
 	createdAtSec: number;
 	expirySeconds: number;
 	preimageSeed: string;
+	descriptionHash?: string;
 }) => {
 	const preimage = sha256(new TextEncoder().encode(params.preimageSeed));
 	const paymentHash = sha256(preimage);
@@ -54,10 +56,15 @@ export const testLightningInvoice = (params: {
 		...toBigEndianWords(params.createdAtSec, timestampWordCount),
 		...taggedField(paymentHashTag, bech32.toWords(paymentHash)),
 		...taggedField(expiryTag, toShortestBigEndianWords(params.expirySeconds)),
-		...taggedField(
-			descriptionTag,
-			bech32.toWords(new TextEncoder().encode(invoiceDescription)),
-		),
+		...(params.descriptionHash === undefined
+			? taggedField(
+					descriptionTag,
+					bech32.toWords(new TextEncoder().encode(invoiceDescription)),
+				)
+			: taggedField(
+					descriptionHashTag,
+					bech32.toWords(hex.decode(params.descriptionHash)),
+				)),
 		...bech32.toWords(new Uint8Array(signatureByteCount)),
 	];
 
